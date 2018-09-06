@@ -10,11 +10,8 @@ Ultimately we may want to move the OC-Agent Go Exporter to [OpenCensus Go core l
 
 ## Installation
 
-TODO: add installation instruction once
-https://github.com/census-ecosystem/opencensus-go-exporter-agent/issues/2 is resolved.
-
 ```bash
-$ go get -u
+$ go get -u contrib.go.opencensus.io/exporter/ocagent
 ```
 
 [OCAgentReadme]: https://github.com/census-instrumentation/opencensus-proto/tree/master/opencensus/proto/agent#opencensus-agent-proto
