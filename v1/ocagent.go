@@ -234,8 +234,6 @@ func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService
 			return err
 		}
 	}
-
-	return nil
 }
 
 var (

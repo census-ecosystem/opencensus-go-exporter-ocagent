@@ -96,7 +96,6 @@ func (ma *mockAgent) Config(tscs agenttracepb.TraceService_ConfigServer) error {
 		}
 		ma.receivedConfigs = append(ma.receivedConfigs, back)
 	}
-	return nil
 }
 
 func (ma *mockAgent) Export(tses agenttracepb.TraceService_ExportServer) error {
@@ -131,8 +130,6 @@ func (ma *mockAgent) Export(tses agenttracepb.TraceService_ExportServer) error {
 		ma.traceNodes = append(ma.traceNodes, req.Node)
 		ma.mu.Unlock()
 	}
-
-	return nil
 }
 
 func (ma *mockAgent) transitionToReceivingClientConfigs() {
