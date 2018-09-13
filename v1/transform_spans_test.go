@@ -139,10 +139,10 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 		},
 		Attributes: &tracepb.Span_Attributes{
 			AttributeMap: map[string]*tracepb.AttributeValue{
-				"cache_hit":  &tracepb.AttributeValue{Value: &tracepb.AttributeValue_BoolValue{BoolValue: true}},
-				"timeout_ns": &tracepb.AttributeValue{Value: &tracepb.AttributeValue_IntValue{IntValue: 12e9}},
-				"ping_count": &tracepb.AttributeValue{Value: &tracepb.AttributeValue_IntValue{IntValue: 25}},
-				"agent": &tracepb.AttributeValue{Value: &tracepb.AttributeValue_StringValue{
+				"cache_hit":  {Value: &tracepb.AttributeValue_BoolValue{BoolValue: true}},
+				"timeout_ns": {Value: &tracepb.AttributeValue_IntValue{IntValue: 12e9}},
+				"ping_count": {Value: &tracepb.AttributeValue_IntValue{IntValue: 25}},
+				"agent": {Value: &tracepb.AttributeValue_StringValue{
 					StringValue: &tracepb.TruncatableString{Value: "ocagent"},
 				}},
 			},
