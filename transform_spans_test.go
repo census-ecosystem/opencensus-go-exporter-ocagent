@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"contrib.go.opencensus.io/exporter/ocagent/v1"
+	"contrib.go.opencensus.io/exporter/ocagent"
 	"go.opencensus.io/trace"
 	"go.opencensus.io/trace/tracestate"
 
