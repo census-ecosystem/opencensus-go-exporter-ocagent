@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"contrib.go.opencensus.io/exporter/ocagent/v1"
+	"contrib.go.opencensus.io/exporter/ocagent"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
