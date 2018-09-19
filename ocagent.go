@@ -273,7 +273,7 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	if sd == nil {
 		return
 	}
-	_ = ae.traceBundler.Add(sd, -1)
+	_ = ae.traceBundler.Add(sd, 1)
 }
 
 func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
