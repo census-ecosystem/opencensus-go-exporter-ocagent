@@ -279,7 +279,7 @@ func TestNewExporter_agentOnBadConnection(t *testing.T) {
 	_, agentPortStr, _ := net.SplitHostPort(ln.Addr().String())
 	agentPort, _ := strconv.Atoi(agentPortStr)
 
-	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithPort(uint16(agentPort)))
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithPort(agentPort))
 	if err == nil {
 		t.Fatal("Surprisingly connected to an unavailable non-gRPC connection")
 	}

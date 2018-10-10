@@ -46,7 +46,7 @@ func WithInsecure() ExporterOption { return new(insecureGrpcConnection) }
 
 // WithPort allows one to override the port that the exporter will
 // connect to the agent on, instead of using DefaultAgentPort.
-func WithPort(port uint16) ExporterOption {
+func WithPort(port int) ExporterOption {
 	return portSetter(port)
 }
 

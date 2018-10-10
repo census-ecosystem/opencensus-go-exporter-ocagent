@@ -159,12 +159,12 @@ func (da *discardAgent) Export(tses agenttracepb.TraceService_ExportServer) erro
 	}
 }
 
-func parsePort(addr net.Addr) (uint16, error) {
+func parsePort(addr net.Addr) (int, error) {
 	addrStr := addr.String()
 	if i := strings.LastIndex(addrStr, ":"); i < 0 {
 		return 0, errors.New("no `:` found")
 	} else {
 		port, err := strconv.Atoi(addrStr[i+1:])
-		return uint16(port), err
+		return port, err
 	}
 }

@@ -46,7 +46,7 @@ type mockAgent struct {
 	configsToSend          chan *agenttracepb.UpdatedLibraryConfig
 	closeConfigsToSendOnce sync.Once
 
-	port     uint16
+	port     int
 	stopFunc func() error
 	stopOnce sync.Once
 }
@@ -187,7 +187,7 @@ func runMockAgentAtAddr(t *testing.T, addr string) *mockAgent {
 	_, agentPortStr, _ := net.SplitHostPort(ln.Addr().String())
 	agentPort, _ := strconv.Atoi(agentPortStr)
 
-	ma.port = uint16(agentPort)
+	ma.port = int(agentPort)
 	ma.stopFunc = deferFunc
 
 	return ma
