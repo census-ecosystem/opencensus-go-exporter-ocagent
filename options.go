@@ -15,7 +15,7 @@
 package ocagent
 
 const (
-	DefaultAgentPort uint16 = 55678
+	DefaultAgentPort int    = 55678
 	DefaultAgentHost string = "localhost"
 )
 
@@ -23,10 +23,10 @@ type ExporterOption interface {
 	withExporter(e *Exporter)
 }
 
-type portSetter uint16
+type portSetter int
 
 func (ps portSetter) withExporter(e *Exporter) {
-	e.agentPort = uint16(ps)
+	e.agentPort = int(ps)
 }
 
 var _ ExporterOption = (*portSetter)(nil)
@@ -46,7 +46,7 @@ func WithInsecure() ExporterOption { return new(insecureGrpcConnection) }
 
 // WithPort allows one to override the port that the exporter will
 // connect to the agent on, instead of using DefaultAgentPort.
-func WithPort(port uint16) ExporterOption {
+func WithPort(port int) ExporterOption {
 	return portSetter(port)
 }
 
