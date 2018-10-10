@@ -187,7 +187,7 @@ func runMockAgentAtAddr(t *testing.T, addr string) *mockAgent {
 	_, agentPortStr, _ := net.SplitHostPort(ln.Addr().String())
 	agentPort, _ := strconv.Atoi(agentPortStr)
 
-	ma.port = int(agentPort)
+	ma.port = agentPort
 	ma.stopFunc = deferFunc
 
 	return ma
