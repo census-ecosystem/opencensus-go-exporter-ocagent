@@ -23,14 +23,6 @@ type ExporterOption interface {
 	withExporter(e *Exporter)
 }
 
-type portSetter uint16
-
-func (ps portSetter) withExporter(e *Exporter) {
-	e.agentPort = uint16(ps)
-}
-
-var _ ExporterOption = (*portSetter)(nil)
-
 type insecureGrpcConnection int
 
 var _ ExporterOption = (*insecureGrpcConnection)(nil)
@@ -43,12 +35,6 @@ func (igc *insecureGrpcConnection) withExporter(e *Exporter) {
 // just like grpc.WithInsecure() https://godoc.org/google.golang.org/grpc#WithInsecure
 // does. Note, by default, client security is required unless WithInsecure is used.
 func WithInsecure() ExporterOption { return new(insecureGrpcConnection) }
-
-// WithPort allows one to override the port that the exporter will
-// connect to the agent on, instead of using DefaultAgentPort.
-func WithPort(port uint16) ExporterOption {
-	return portSetter(port)
-}
 
 type addressSetter string
 

@@ -47,7 +47,6 @@ type Exporter struct {
 	mu              sync.RWMutex
 	started         bool
 	stopped         bool
-	agentPort       uint16
 	agentAddress    string
 	serviceName     string
 	canDialInsecure bool
@@ -76,9 +75,6 @@ func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	e := new(Exporter)
 	for _, opt := range opts {
 		opt.withExporter(e)
-	}
-	if e.agentPort <= 0 {
-		e.agentPort = DefaultAgentPort
 	}
 	traceBundler := bundler.NewBundler((*trace.SpanData)(nil), func(bundle interface{}) {
 		e.uploadTraces(bundle.([]*trace.SpanData))
@@ -123,11 +119,7 @@ func (ae *Exporter) prepareAgentAddress() string {
 	if ae.agentAddress != "" {
 		return ae.agentAddress
 	}
-	port := DefaultAgentPort
-	if ae.agentPort > 0 {
-		port = ae.agentPort
-	}
-	return fmt.Sprintf("%s:%d", DefaultAgentHost, port)
+	return fmt.Sprintf("%s:%d", DefaultAgentHost, DefaultAgentPort)
 }
 
 func (ae *Exporter) doStartLocked() error {
