@@ -47,7 +47,7 @@ type Exporter struct {
 	mu              sync.RWMutex
 	started         bool
 	stopped         bool
-	agentPort       uint16
+	agentPort       int
 	agentAddress    string
 	serviceName     string
 	canDialInsecure bool

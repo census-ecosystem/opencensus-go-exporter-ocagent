@@ -15,7 +15,7 @@
 package ocagent
 
 const (
-	DefaultAgentPort uint16 = 55678
+	DefaultAgentPort int    = 55678
 	DefaultAgentHost string = "localhost"
 )
 
@@ -23,10 +23,10 @@ type ExporterOption interface {
 	withExporter(e *Exporter)
 }
 
-type portSetter uint16
+type portSetter int
 
 func (ps portSetter) withExporter(e *Exporter) {
-	e.agentPort = uint16(ps)
+	e.agentPort = int(ps)
 }
 
 var _ ExporterOption = (*portSetter)(nil)
