@@ -49,6 +49,7 @@ func TestExportsUnderLoad_issue13(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not parse port from agent address: %v", err)
 	}
+	agentAddr := fmt.Sprintf("localhost:%d", agentPort)
 
 	// Then create the frontend HTTP server's listener which
 	// will be used to generate tertiary spans that
@@ -73,7 +74,7 @@ func TestExportsUnderLoad_issue13(t *testing.T) {
 	exporter, err := ocagent.NewExporter(
 		ocagent.WithInsecure(),
 		ocagent.WithServiceName("go-app"),
-		ocagent.WithPort(agentPort))
+		ocagent.WithAddress(agentAddr))
 	if err != nil {
 		t.Fatalf("Failed to create the agent exporter: %v", err)
 	}

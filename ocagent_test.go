@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -37,7 +36,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 	defer ma.stop()
 
 	serviceName := "endToEnd_test"
-	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithPort(ma.port), ocagent.WithServiceName(serviceName))
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address), ocagent.WithServiceName(serviceName))
 	if err != nil {
 		t.Fatalf("Failed to create a new agent exporter: %v", err)
 	}
@@ -209,7 +208,7 @@ func TestNewExporter_invokeStartThenStopManyTimes(t *testing.T) {
 	ma := runMockAgent(t)
 	defer ma.stop()
 
-	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithPort(ma.port))
+	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address))
 	if err != nil {
 		t.Fatal("Surprisingly connected with a bad port")
 	}
@@ -233,7 +232,7 @@ func TestNewExporter_invokeStartThenStopManyTimes(t *testing.T) {
 
 func TestNewExporter_agentConnectionDiesInMidst(t *testing.T) {
 	ma := runMockAgent(t)
-	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithPort(ma.port))
+	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address))
 	if err != nil {
 		t.Fatal("Surprisingly connected with a bad port")
 	}
@@ -277,9 +276,9 @@ func TestNewExporter_agentOnBadConnection(t *testing.T) {
 	}()
 
 	_, agentPortStr, _ := net.SplitHostPort(ln.Addr().String())
-	agentPort, _ := strconv.Atoi(agentPortStr)
 
-	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithPort(uint16(agentPort)))
+	address := fmt.Sprintf("localhost:%s", agentPortStr)
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithAddress(address))
 	if err == nil {
 		t.Fatal("Surprisingly connected to an unavailable non-gRPC connection")
 	}
@@ -292,8 +291,7 @@ func TestNewExporter_withAddress(t *testing.T) {
 	ma := runMockAgent(t)
 	defer ma.stop()
 
-	addr := fmt.Sprintf("localhost:%d", ma.port)
-	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithAddress(addr))
+	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address))
 	if err != nil {
 		t.Fatal("Surprisingly connected with a bad port")
 	}
