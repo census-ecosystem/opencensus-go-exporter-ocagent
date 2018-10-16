@@ -38,7 +38,7 @@ func (ae *Exporter) connected() bool {
 	return atomic.LoadInt32(&ae.connectionState) == sConnected
 }
 
-const defaultConnReattemptPeriod = 800 * time.Millisecond
+const defaultConnReattemptPeriod = 5000 * time.Millisecond
 
 func (ae *Exporter) indefiniteBackgroundConnection() error {
 	defer func() {

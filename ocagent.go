@@ -196,11 +196,12 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 }
 
 func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService_ConfigClient) error {
+	// Note: We haven't yet implemented configuration sending so we
+	// should NOT be changing connection states within this function for now.
 	for {
 		recv, err := configStream.Recv()
 		if err != nil {
 			// TODO: Check if this is a transient error or exponential backoff-able.
-			ae.setStateDisconnected()
 			return err
 		}
 		cfg := recv.Config
@@ -224,7 +225,6 @@ func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService
 		// Then finally send back to upstream the newly applied configuration
 		err = configStream.Send(&agenttracepb.CurrentLibraryConfig{Config: &tracepb.TraceConfig{Sampler: cfg.Sampler}})
 		if err != nil {
-			ae.setStateDisconnected()
 			return err
 		}
 	}
@@ -298,14 +298,19 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 		return
 
 	default:
+		if !ae.connected() {
+			return
+		}
+
 		protoSpans := ocSpanDataToPbSpans(sdl)
-		if len(protoSpans) > 0 && ae.connected() {
-			err := ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{
-				Spans: protoSpans,
-			})
-			if err != nil {
-				ae.setStateDisconnected()
-			}
+		if len(protoSpans) == 0 {
+			return
+		}
+		err := ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{
+			Spans: protoSpans,
+		})
+		if err != nil {
+			ae.setStateDisconnected()
 		}
 	}
 }
