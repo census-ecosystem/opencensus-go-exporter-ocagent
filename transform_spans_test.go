@@ -35,7 +35,10 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 	defer agent.stop()
 
 	serviceName := "spanTranslation"
-	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithAddress(agent.address), ocagent.WithServiceName(serviceName))
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(),
+		ocagent.WithAddress(agent.address),
+		ocagent.WithReconnectionPeriod(50*time.Millisecond),
+		ocagent.WithServiceName(serviceName))
 	if err != nil {
 		t.Fatalf("Failed to create a new agent exporter: %v", err)
 	}

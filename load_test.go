@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -74,6 +75,7 @@ func TestExportsUnderLoad_issue13(t *testing.T) {
 	exporter, err := ocagent.NewExporter(
 		ocagent.WithInsecure(),
 		ocagent.WithServiceName("go-app"),
+		ocagent.WithReconnectionPeriod(50*time.Millisecond),
 		ocagent.WithAddress(agentAddr))
 	if err != nil {
 		t.Fatalf("Failed to create the agent exporter: %v", err)
