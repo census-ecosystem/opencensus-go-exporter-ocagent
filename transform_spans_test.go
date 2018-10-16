@@ -41,6 +41,9 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 	}
 	defer exp.Stop()
 
+	// Give the background agent connection sometime to setup.
+	<-time.After(20 * time.Millisecond)
+
 	startTime := time.Now()
 	endTime := startTime.Add(10 * time.Second)
 	ocTracestate, err := tracestate.New(new(tracestate.Tracestate), tracestate.Entry{Key: "foo", Value: "bar"},
@@ -93,11 +96,13 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 	// yet Attribute value and key cannot be easily introspected, so we can't easily test the values.
 
 	exp.ExportSpan(ocSpanData)
+	exp.Flush()
 	// Also try to export a nil span and it should never make it
 	exp.ExportSpan(nil)
 	exp.Flush()
-	<-time.After(100 * time.Millisecond)
+	// Give flush sometime to upload its data
 	exp.Stop()
+	<-time.After(40 * time.Millisecond)
 	agent.stop()
 
 	spans := agent.getSpans()

@@ -208,15 +208,15 @@ func TestNewExporter_invokeStartThenStopManyTimes(t *testing.T) {
 	ma := runMockAgent(t)
 	defer ma.stop()
 
-	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address))
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address))
 	if err != nil {
 		t.Fatal("Surprisingly connected with a bad port")
 	}
 	defer exp.Stop()
 
-	// Invoke Start numerous times
+	// Invoke Start numerous times, should return errAlreadyStarted
 	for i := 0; i < 10; i++ {
-		if err := exp.Start(); err != nil {
+		if err := exp.Start(); err == nil || !strings.Contains(err.Error(), "already started") {
 			t.Errorf("#%d unexpected Start error: %v", i, err)
 		}
 	}
@@ -230,23 +230,58 @@ func TestNewExporter_invokeStartThenStopManyTimes(t *testing.T) {
 	}
 }
 
-func TestNewExporter_agentConnectionDiesInMidst(t *testing.T) {
+func TestNewExporter_agentConnectionDiesThenReconnects(t *testing.T) {
 	ma := runMockAgent(t)
-	exp, err := ocagent.NewUnstartedExporter(ocagent.WithInsecure(), ocagent.WithAddress(ma.address))
+
+	reconnectionPeriod := 20 * time.Millisecond
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(),
+		ocagent.WithAddress(ma.address),
+		ocagent.WithReconnectionPeriod(reconnectionPeriod))
 	if err != nil {
-		t.Fatal("Surprisingly connected with a bad port")
+		t.Fatalf("Unexpected error: %v", err)
 	}
 	defer exp.Stop()
 
-	if err := exp.Start(); err != nil {
-		t.Fatalf("Unexpected Start error: %v", err)
-	}
-
-	// Stop the agent right away to simulate killing
-	// the connection in the midst of communication.
+	// We'll now stop the agent right away to simulate a connection
+	// dying in the midst of communication or even not existing before.
 	ma.stop()
 
-	exp.ExportSpan(&trace.SpanData{Name: "in the midst"})
+	// In the test below, we'll stop the agent many times,
+	// while exporting traces and test to ensure that we can
+	// reconnect.
+	for j := 0; j < 3; j++ {
+
+		exp.ExportSpan(&trace.SpanData{Name: "in the midst"})
+		exp.Flush()
+		<-time.After(reconnectionPeriod * 2)
+
+		// Now resurrect the agent by making a new one but reusing the
+		// old address, and the agent should reconnect automatically.
+		nma := runMockAgentAtAddr(t, ma.address)
+
+		// Give the exporter sometime to reconnect
+		<-time.After(reconnectionPeriod * 4)
+
+		n := 10
+		for i := 0; i < n; i++ {
+			exp.ExportSpan(&trace.SpanData{Name: "Resurrected"})
+		}
+		exp.Flush()
+		<-time.After(reconnectionPeriod * 3)
+
+		nmaSpans := nma.getSpans()
+		// Expecting 10 spanData that were sampled, given that
+		if g, w := len(nmaSpans), n; g != w {
+			t.Errorf("Round #%d: Connected agent: spans: got %d want %d", j, g, w)
+		}
+
+		dSpans := ma.getSpans()
+		// Expecting 0 spans to have been received by the original but now dead agent
+		if g, w := len(dSpans), 0; g != w {
+			t.Errorf("Round #%d: Disconnected agent: spans: got %d want %d", j, g, w)
+		}
+		nma.stop()
+	}
 }
 
 // This test takes a long time to run: to skip it, run tests using: -short
@@ -263,28 +298,14 @@ func TestNewExporter_agentOnBadConnection(t *testing.T) {
 	// However, our goal of closing it is to simulate an unavailable connection
 	ln.Close()
 
-	startTime := time.Now()
-	// If this returns in less than 6.5s report an error
-	// since that's a sign that exponential backoff didn't happen.
-	wantMinDuration := (6 * time.Second) + (500 * time.Millisecond)
-	defer func() {
-		timeSpent := time.Now().Sub(startTime)
-		if timeSpent < wantMinDuration {
-			t.Errorf("Took %s, yet with a non-existent connection it should take at least %s",
-				timeSpent, wantMinDuration)
-		}
-	}()
-
 	_, agentPortStr, _ := net.SplitHostPort(ln.Addr().String())
 
 	address := fmt.Sprintf("localhost:%s", agentPortStr)
 	exp, err := ocagent.NewExporter(ocagent.WithInsecure(), ocagent.WithAddress(address))
-	if err == nil {
-		t.Fatal("Surprisingly connected to an unavailable non-gRPC connection")
+	if err != nil {
+		t.Fatalf("Despite an indefinite background reconnection, got error: %v", err)
 	}
-	if exp != nil {
-		t.Fatalf("Surprisingly created an exporter: %#v", exp)
-	}
+	defer exp.Stop()
 }
 
 func TestNewExporter_withAddress(t *testing.T) {

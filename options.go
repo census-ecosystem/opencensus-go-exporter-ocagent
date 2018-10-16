@@ -14,6 +14,8 @@
 
 package ocagent
 
+import "time"
+
 const (
 	DefaultAgentPort uint16 = 55678
 	DefaultAgentHost string = "localhost"
@@ -63,4 +65,14 @@ var _ ExporterOption = (*serviceNameSetter)(nil)
 // that the exporter will report to the agent.
 func WithServiceName(serviceName string) ExporterOption {
 	return serviceNameSetter(serviceName)
+}
+
+type reconnectionPeriod time.Duration
+
+func (rp reconnectionPeriod) withExporter(e *Exporter) {
+	e.reconnectionPeriod = time.Duration(rp)
+}
+
+func WithReconnectionPeriod(rp time.Duration) ExporterOption {
+	return reconnectionPeriod(rp)
 }
