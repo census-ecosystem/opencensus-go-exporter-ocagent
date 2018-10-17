@@ -52,7 +52,6 @@ type Exporter struct {
 	agentAddress       string
 	serviceName        string
 	canDialInsecure    bool
-	traceSvcClient     agenttracepb.TraceServiceClient
 	traceExporter      agenttracepb.TraceService_ExportClient
 	nodeInfo           *agentcommonpb.Node
 	grpcClientConn     *grpc.ClientConn
