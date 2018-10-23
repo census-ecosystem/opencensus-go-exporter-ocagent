@@ -15,13 +15,22 @@
 package ocagent
 
 import (
+	"math"
 	"time"
+	"unicode/utf8"
 
 	"go.opencensus.io/trace"
 	"go.opencensus.io/trace/tracestate"
 
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
+)
+
+const (
+	maxAnnotationEventsPerSpan = 32
+	maxMessageEventsPerSpan    = 128
+	maxAttributeStringKey      = 128
+	maxAttributeStringValue    = 256
 )
 
 func ocSpanToProtoSpan(sd *trace.SpanData) *tracepb.Span {
@@ -43,6 +52,7 @@ func ocSpanToProtoSpan(sd *trace.SpanData) *tracepb.Span {
 		Kind:         ocSpanKindToProtoSpanKind(sd.SpanKind),
 		Name:         namePtr,
 		Attributes:   ocAttributesToProtoAttributes(sd.Attributes),
+		TimeEvents:   ocTimeEventsToProtoTimeEvents(sd.Annotations, sd.MessageEvents),
 		Tracestate:   ocTracestateToProtoTracestate(sd.Tracestate),
 	}
 }
@@ -120,6 +130,108 @@ func ocAttributesToProtoAttributes(attrs map[string]interface{}) *tracepb.Span_A
 	return &tracepb.Span_Attributes{
 		AttributeMap: outMap,
 	}
+}
+
+// the following code are mostly from oc stackdriver
+// see https://github.com/census-ecosystem/opencensus-go-exporter-stackdriver/blob/master/trace_proto.go#L46 for detail
+func ocTimeEventsToProtoTimeEvents(as []trace.Annotation, es []trace.MessageEvent) *tracepb.Span_TimeEvents {
+	if len(as) == 0 && len(es) == 0 {
+		return nil
+	}
+
+	timeEvents := &tracepb.Span_TimeEvents{}
+	var annotations, droppedAnnotationsCount int
+	var messageEvents, droppedMessageEventsCount int
+
+	// transform annotations
+	for i, a := range as {
+		if annotations >= maxAnnotationEventsPerSpan {
+			droppedAnnotationsCount = len(as) - i
+			break
+		}
+		annotations++
+		timeEvents.TimeEvent = append(timeEvents.TimeEvent,
+			&tracepb.Span_TimeEvent{
+				Time:  timeToTimestamp(a.Time),
+				Value: transformAnnoationToTimeEvent(&a),
+			},
+		)
+	}
+
+	// transform message events
+	for i, e := range es {
+		if messageEvents >= maxMessageEventsPerSpan {
+			droppedMessageEventsCount = len(es) - i
+			break
+		}
+		messageEvents++
+		timeEvents.TimeEvent = append(timeEvents.TimeEvent,
+			&tracepb.Span_TimeEvent{
+				Time:  timeToTimestamp(e.Time),
+				Value: transformMessageEventToTimeEvent(&e),
+			},
+		)
+	}
+
+	// process dropped counter
+	timeEvents.DroppedAnnotationsCount = clip32(droppedAnnotationsCount)
+	timeEvents.DroppedMessageEventsCount = clip32(droppedMessageEventsCount)
+
+	return timeEvents
+}
+
+func transformAnnoationToTimeEvent(a *trace.Annotation) *tracepb.Span_TimeEvent_Annotation_ {
+	return &tracepb.Span_TimeEvent_Annotation_{
+		Annotation: &tracepb.Span_TimeEvent_Annotation{
+			Description: trunc(a.Message, maxAttributeStringValue),
+			Attributes:  ocAttributesToProtoAttributes(a.Attributes),
+		},
+	}
+}
+
+func transformMessageEventToTimeEvent(e *trace.MessageEvent) *tracepb.Span_TimeEvent_MessageEvent_ {
+	return &tracepb.Span_TimeEvent_MessageEvent_{
+		MessageEvent: &tracepb.Span_TimeEvent_MessageEvent{
+			Type:             tracepb.Span_TimeEvent_MessageEvent_Type(e.EventType),
+			Id:               uint64(e.MessageID),
+			UncompressedSize: uint64(e.UncompressedByteSize),
+			CompressedSize:   uint64(e.CompressedByteSize),
+		},
+	}
+}
+
+// trunc returns a TruncatableString truncated to the given limit.
+func trunc(s string, limit int) *tracepb.TruncatableString {
+	if len(s) > limit {
+		b := []byte(s[:limit])
+		for {
+			r, size := utf8.DecodeLastRune(b)
+			if r == utf8.RuneError && size == 1 {
+				b = b[:len(b)-1]
+			} else {
+				break
+			}
+		}
+		return &tracepb.TruncatableString{
+			Value:              string(b),
+			TruncatedByteCount: clip32(len(s) - len(b)),
+		}
+	}
+	return &tracepb.TruncatableString{
+		Value:              s,
+		TruncatedByteCount: 0,
+	}
+}
+
+// clip32 clips an int to the range of an int32.
+func clip32(x int) int32 {
+	if x < math.MinInt32 {
+		return math.MinInt32
+	}
+	if x > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(x)
 }
 
 func timeToTimestamp(t time.Time) *timestamp.Timestamp {
