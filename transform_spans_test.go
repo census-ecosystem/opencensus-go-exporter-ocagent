@@ -71,7 +71,7 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 				Time:    startTime,
 				Message: "start",
 				Attributes: map[string]interface{}{
-					"timeout_ns": 12e9,
+					"timeout_ns": int64(12e9),
 					"agent":      "ocagent",
 					"cache_hit":  true,
 					"ping_count": int(25), // Should be transformed into int64
@@ -81,7 +81,7 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 				Time:    endTime,
 				Message: "end",
 				Attributes: map[string]interface{}{
-					"timeout_ns": 12e9,
+					"timeout_ns": int64(12e9),
 					"agent":      "ocagent",
 					"cache_hit":  false,
 					"ping_count": int(25), // Should be transformed into int64
