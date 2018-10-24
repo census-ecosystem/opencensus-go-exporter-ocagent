@@ -66,6 +66,28 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 		Name:         "End-To-End Here",
 		StartTime:    startTime,
 		EndTime:      endTime,
+		Annotations: []trace.Annotation{
+			{
+				Time:    startTime,
+				Message: "start",
+				Attributes: map[string]interface{}{
+					"timeout_ns": int64(12e9),
+					"agent":      "ocagent",
+					"cache_hit":  true,
+					"ping_count": int(25), // Should be transformed into int64
+				},
+			},
+			{
+				Time:    endTime,
+				Message: "end",
+				Attributes: map[string]interface{}{
+					"timeout_ns": int64(12e9),
+					"agent":      "ocagent",
+					"cache_hit":  false,
+					"ping_count": int(25), // Should be transformed into int64
+				},
+			},
+		},
 		MessageEvents: []trace.MessageEvent{
 			{Time: startTime, EventType: trace.MessageEventTypeSent, UncompressedByteSize: 1024, CompressedByteSize: 512},
 			{Time: endTime, EventType: trace.MessageEventTypeRecv, UncompressedByteSize: 1024, CompressedByteSize: 1000},
@@ -104,8 +126,8 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 	exp.ExportSpan(nil)
 	exp.Flush()
 	// Give flush sometime to upload its data
-	exp.Stop()
 	<-time.After(40 * time.Millisecond)
+	exp.Stop()
 	agent.stop()
 
 	spans := agent.getSpans()
@@ -124,6 +146,69 @@ func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {
 		Status: &tracepb.Status{
 			Code:    13,
 			Message: "This is not a drill!",
+		},
+		TimeEvents: &tracepb.Span_TimeEvents{
+			TimeEvent: []*tracepb.Span_TimeEvent{
+				// annotation
+				{
+					Time: timeToTimestamp(startTime),
+					Value: &tracepb.Span_TimeEvent_Annotation_{
+						Annotation: &tracepb.Span_TimeEvent_Annotation{
+							Description: &tracepb.TruncatableString{Value: "start"},
+							Attributes: &tracepb.Span_Attributes{
+								AttributeMap: map[string]*tracepb.AttributeValue{
+									"cache_hit":  {Value: &tracepb.AttributeValue_BoolValue{BoolValue: true}},
+									"timeout_ns": {Value: &tracepb.AttributeValue_IntValue{IntValue: 12e9}},
+									"ping_count": {Value: &tracepb.AttributeValue_IntValue{IntValue: 25}},
+									"agent": {Value: &tracepb.AttributeValue_StringValue{
+										StringValue: &tracepb.TruncatableString{Value: "ocagent"},
+									}},
+								},
+							},
+						},
+					},
+				},
+				{
+					Time: timeToTimestamp(endTime),
+					Value: &tracepb.Span_TimeEvent_Annotation_{
+						Annotation: &tracepb.Span_TimeEvent_Annotation{
+							Description: &tracepb.TruncatableString{Value: "end"},
+							Attributes: &tracepb.Span_Attributes{
+								AttributeMap: map[string]*tracepb.AttributeValue{
+									"cache_hit":  {Value: &tracepb.AttributeValue_BoolValue{BoolValue: false}},
+									"timeout_ns": {Value: &tracepb.AttributeValue_IntValue{IntValue: 12e9}},
+									"ping_count": {Value: &tracepb.AttributeValue_IntValue{IntValue: 25}},
+									"agent": {Value: &tracepb.AttributeValue_StringValue{
+										StringValue: &tracepb.TruncatableString{Value: "ocagent"},
+									}},
+								},
+							},
+						},
+					},
+				},
+
+				// message event
+				{
+					Time: timeToTimestamp(startTime),
+					Value: &tracepb.Span_TimeEvent_MessageEvent_{
+						MessageEvent: &tracepb.Span_TimeEvent_MessageEvent{
+							Type:             tracepb.Span_TimeEvent_MessageEvent_SENT,
+							UncompressedSize: 1024,
+							CompressedSize:   512,
+						},
+					},
+				},
+				{
+					Time: timeToTimestamp(endTime),
+					Value: &tracepb.Span_TimeEvent_MessageEvent_{
+						MessageEvent: &tracepb.Span_TimeEvent_MessageEvent{
+							Type:             tracepb.Span_TimeEvent_MessageEvent_RECEIVED,
+							UncompressedSize: 1024,
+							CompressedSize:   1000,
+						},
+					},
+				},
+			},
 		},
 		Links: &tracepb.Span_Links{
 			Link: []*tracepb.Span_Link{
