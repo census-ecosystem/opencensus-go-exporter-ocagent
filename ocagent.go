@@ -24,10 +24,13 @@ import (
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
 
+	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 
-	agentcommonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
@@ -41,6 +44,7 @@ func init() {
 }
 
 var _ trace.Exporter = (*Exporter)(nil)
+var _ view.Exporter = (*Exporter)(nil)
 
 type Exporter struct {
 	connectionState int32
@@ -53,7 +57,8 @@ type Exporter struct {
 	serviceName        string
 	canDialInsecure    bool
 	traceExporter      agenttracepb.TraceService_ExportClient
-	nodeInfo           *agentcommonpb.Node
+	metricsExporter    agentmetricspb.MetricsService_ExportClient
+	nodeInfo           *commonpb.Node
 	grpcClientConn     *grpc.ClientConn
 	reconnectionPeriod time.Duration
 
@@ -64,6 +69,11 @@ type Exporter struct {
 	backgroundConnectionDoneCh chan bool
 
 	traceBundler *bundler.Bundler
+
+	// viewDataBundler is the bundler to enable conversion
+	// from OpenCensus-Go view.Data to metricspb.Metric.
+	// Please do not confuse it with metricsBundler!
+	viewDataBundler *bundler.Bundler
 }
 
 func NewExporter(opts ...ExporterOption) (*Exporter, error) {
@@ -90,7 +100,14 @@ func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	traceBundler.DelayThreshold = 2 * time.Second
 	traceBundler.BundleCountThreshold = spanDataBufferSize
 	e.traceBundler = traceBundler
-	e.nodeInfo = createNodeInfo(e.serviceName)
+
+	viewDataBundler := bundler.NewBundler((*view.Data)(nil), func(bundle interface{}) {
+		e.uploadViewData(bundle.([]*view.Data))
+	})
+	viewDataBundler.DelayThreshold = 2 * time.Second
+	viewDataBundler.BundleCountThreshold = 500 // TODO: (@odeke-em) make this configurable.
+	e.viewDataBundler = viewDataBundler
+	e.nodeInfo = NodeWithStartTime(e.serviceName)
 
 	return e, nil
 }
@@ -155,6 +172,14 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 	ae.grpcClientConn = cc
 	ae.mu.Unlock()
 
+	if err := ae.createTraceServiceConnection(ae.grpcClientConn, nodeInfo); err != nil {
+		return err
+	}
+
+	return ae.createMetricsServiceConnection(ae.grpcClientConn, nodeInfo)
+}
+
+func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *commonpb.Node) error {
 	// Initiate the trace service by sending over node identifier info.
 	traceSvcClient := agenttracepb.NewTraceServiceClient(cc)
 	traceExporter, err := traceSvcClient.Export(context.Background())
@@ -162,18 +187,21 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 		return fmt.Errorf("Exporter.Start:: TraceServiceClient: %v", err)
 	}
 
-	firstTraceMessage := &agenttracepb.ExportTraceServiceRequest{Node: nodeInfo}
+	firstTraceMessage := &agenttracepb.ExportTraceServiceRequest{Node: node}
 	if err := traceExporter.Send(firstTraceMessage); err != nil {
 		return fmt.Errorf("Exporter.Start:: Failed to initiate the Config service: %v", err)
 	}
+
+	ae.mu.Lock()
 	ae.traceExporter = traceExporter
+	ae.mu.Unlock()
 
 	// Initiate the config service by sending over node identifier info.
 	configStream, err := traceSvcClient.Config(context.Background())
 	if err != nil {
 		return fmt.Errorf("Exporter.Start:: ConfigStream: %v", err)
 	}
-	firstCfgMessage := &agenttracepb.CurrentLibraryConfig{Node: nodeInfo}
+	firstCfgMessage := &agenttracepb.CurrentLibraryConfig{Node: node}
 	if err := configStream.Send(firstCfgMessage); err != nil {
 		return fmt.Errorf("Exporter.Start:: Failed to initiate the Config service: %v", err)
 	}
@@ -182,6 +210,26 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 	// by the agent, but also reply to it with the applied configuration.
 	go ae.handleConfigStreaming(configStream)
 
+	return nil
+}
+
+func (ae *Exporter) createMetricsServiceConnection(cc *grpc.ClientConn, node *commonpb.Node) error {
+	metricsSvcClient := agentmetricspb.NewMetricsServiceClient(cc)
+	metricsExporter, err := metricsSvcClient.Export(context.Background())
+	if err != nil {
+		return fmt.Errorf("MetricsExporter: failed to start the service client: %v", err)
+	}
+	// Initiate the metrics service by sending over the first message just containing the Node.
+	firstMetricsMessage := &agentmetricspb.ExportMetricsServiceRequest{Node: node}
+	if err := metricsExporter.Send(firstMetricsMessage); err != nil {
+		return fmt.Errorf("MetricsExporter:: failed to send the first message: %v", err)
+	}
+
+	ae.mu.Lock()
+	ae.metricsExporter = metricsExporter
+	ae.mu.Unlock()
+
+	// With that we are good to go and can start sending metrics
 	return nil
 }
 
@@ -278,6 +326,13 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	_ = ae.traceBundler.Add(sd, 1)
 }
 
+func (ae *Exporter) ExportView(vd *view.Data) {
+	if vd == nil {
+		return
+	}
+	_ = ae.viewDataBundler.Add(vd, 1)
+}
+
 func ocSpanDataToPbSpans(sdl []*trace.SpanData) []*tracepb.Span {
 	if len(sdl) == 0 {
 		return nil
@@ -314,6 +369,51 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 	}
 }
 
+func ocViewDataToPbMetrics(vdl []*view.Data) []*metricspb.Metric {
+	if len(vdl) == 0 {
+		return nil
+	}
+	metrics := make([]*metricspb.Metric, 0, len(vdl))
+	for _, vd := range vdl {
+		if vd != nil {
+			vmetric, err := viewDataToMetric(vd)
+			// TODO: (@odeke-em) somehow report this error, if it is non-nil.
+			if err == nil && vmetric != nil {
+				metrics = append(metrics, vmetric)
+			}
+		}
+	}
+	return metrics
+}
+
+func (ae *Exporter) uploadViewData(vdl []*view.Data) {
+	select {
+	case <-ae.stopCh:
+		return
+
+	default:
+		if !ae.connected() {
+			return
+		}
+
+		protoMetrics := ocViewDataToPbMetrics(vdl)
+		if len(protoMetrics) == 0 {
+			return
+		}
+		err := ae.metricsExporter.Send(&agentmetricspb.ExportMetricsServiceRequest{
+			Metrics: protoMetrics,
+			// TODO:(@odeke-em)
+			// a) Figure out how to derive a Node from the environment
+			// b) Figure out how to derive a Resource from the environment
+			// or better letting users of the exporter configure it.
+		})
+		if err != nil {
+			ae.setStateDisconnected()
+		}
+	}
+}
+
 func (ae *Exporter) Flush() {
 	ae.traceBundler.Flush()
+	ae.viewDataBundler.Flush()
 }
