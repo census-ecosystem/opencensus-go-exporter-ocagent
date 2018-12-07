@@ -34,7 +34,7 @@ var (
 	errNilViewData = errors.New("expecting a non-nil view.Data")
 )
 
-func viewDataToMetrics(vd *view.Data) (*metricspb.Metric, error) {
+func viewDataToMetric(vd *view.Data) (*metricspb.Metric, error) {
 	if vd == nil {
 		return nil, errNilViewData
 	}
@@ -83,13 +83,6 @@ func stringOrCall(first string, call func() string) string {
 		return first
 	}
 	return call()
-}
-
-func nameToMetricName(name string) *metricspb.Metric_Name {
-	if name == "" {
-		return nil
-	}
-	return &metricspb.Metric_Name{Name: name}
 }
 
 type measureType uint
@@ -176,12 +169,13 @@ func viewDataToTimeseries(vd *view.Data) ([]*metricspb.TimeSeries, error) {
 	startTimestamp := timeToProtoTimestamp(vd.Start)
 	endTimestamp := timeToProtoTimestamp(vd.End)
 
+	mType := measureTypeFromMeasure(vd.View.Measure)
 	timeseries := make([]*metricspb.TimeSeries, 0, len(vd.Rows))
 	// It is imperative that the ordering of "LabelValues" matches those
 	// of the Label keys in the metric descriptor.
 	for _, row := range vd.Rows {
 		labelValues := labelValuesFromTags(row.Tags)
-		point := rowToPoint(row, endTimestamp)
+		point := rowToPoint(row, endTimestamp, mType)
 		timeseries = append(timeseries, &metricspb.TimeSeries{
 			StartTimestamp: startTimestamp,
 			LabelValues:    labelValues,
@@ -204,7 +198,7 @@ func timeToProtoTimestamp(t time.Time) *timestamp.Timestamp {
 	}
 }
 
-func rowToPoint(row *view.Row, endTimestamp *timestamp.Timestamp) *metricspb.Point {
+func rowToPoint(row *view.Row, endTimestamp *timestamp.Timestamp, mType measureType) *metricspb.Point {
 	pt := &metricspb.Point{
 		Timestamp: endTimestamp,
 	}
@@ -224,13 +218,23 @@ func rowToPoint(row *view.Row, endTimestamp *timestamp.Timestamp) *metricspb.Poi
 			}}
 
 	case *view.LastValueData:
-		pt.Value = &metricspb.Point_DoubleValue{DoubleValue: data.Value}
+		setPointValue(pt, data.Value, mType)
 
 	case *view.SumData:
-		pt.Value = &metricspb.Point_DoubleValue{DoubleValue: data.Value}
+		setPointValue(pt, data.Value, mType)
 	}
 
 	return pt
+}
+
+// Not returning anything from this function because metricspb.Point.is_Value is an unexported
+// interface hence we just have to set its value by pointer.
+func setPointValue(pt *metricspb.Point, value float64, mType measureType) {
+	if mType == measureInt64 {
+		pt.Value = &metricspb.Point_Int64Value{Int64Value: int64(value)}
+	} else {
+		pt.Value = &metricspb.Point_DoubleValue{DoubleValue: value}
+	}
 }
 
 func exemplarsToDistributionBuckets(exemplars []*exemplar.Exemplar) []*metricspb.DistributionValue_Bucket {
