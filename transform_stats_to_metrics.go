@@ -113,9 +113,6 @@ func aggregationToMetricDescriptorType(v *view.View) metricspb.MetricDescriptor_
 	}
 
 	switch v.Aggregation.Type {
-	default:
-		return metricspb.MetricDescriptor_UNSPECIFIED
-
 	case view.AggTypeCount:
 		// Cumulative on int64
 		return metricspb.MetricDescriptor_CUMULATIVE_INT64
@@ -212,7 +209,7 @@ func rowToPoint(row *view.Row, endTimestamp *timestamp.Timestamp, mType measureT
 			DistributionValue: &metricspb.DistributionValue{
 				Count:   data.Count,
 				Sum:     float64(data.Count) * data.Mean, // because Mean := Sum/Count
-				Buckets: exemplarsToDistributionBuckets(data.ExemplarsPerBucket),
+				Buckets: bucketsToProtoBuckets(data.CountPerBucket, data.ExemplarsPerBucket),
 
 				SumOfSquaredDeviation: data.SumOfSquaredDev,
 			}}
@@ -237,25 +234,32 @@ func setPointValue(pt *metricspb.Point, value float64, mType measureType) {
 	}
 }
 
-func exemplarsToDistributionBuckets(exemplars []*exemplar.Exemplar) []*metricspb.DistributionValue_Bucket {
-	if len(exemplars) == 0 {
-		return nil
-	}
+// countPerBucket and exemplars are of the same length in well formed data,
+// otherwise ensure that even if exemplars are non-existent that we always
+// insert counts and create distribution value buckets.
+func bucketsToProtoBuckets(countPerBucket []int64, exemplars []*exemplar.Exemplar) []*metricspb.DistributionValue_Bucket {
+	distBuckets := make([]*metricspb.DistributionValue_Bucket, len(countPerBucket))
+	for i := 0; i < len(countPerBucket); i++ {
+		count := countPerBucket[i]
 
-	distBuckets := make([]*metricspb.DistributionValue_Bucket, 0, len(exemplars))
-	for _, exmplr := range exemplars {
-		if exmplr == nil {
-			continue
+		var exmplr *exemplar.Exemplar
+		if i < len(exemplars) {
+			exmplr = exemplars[i]
 		}
 
-		distBuckets = append(distBuckets, &metricspb.DistributionValue_Bucket{
-			Count: 1, // TODO: (@odeke-em) examine if OpenCensus-Go stores the count of values in the bucket
-			Exemplar: &metricspb.DistributionValue_Exemplar{
+		var protoExemplar *metricspb.DistributionValue_Exemplar
+		if exmplr != nil {
+			protoExemplar = &metricspb.DistributionValue_Exemplar{
 				Value:       exmplr.Value,
 				Timestamp:   timeToTimestamp(exmplr.Timestamp),
 				Attachments: exmplr.Attachments,
-			},
-		})
+			}
+		}
+
+		distBuckets[i] = &metricspb.DistributionValue_Bucket{
+			Count:    count,
+			Exemplar: protoExemplar,
+		}
 	}
 
 	return distBuckets
