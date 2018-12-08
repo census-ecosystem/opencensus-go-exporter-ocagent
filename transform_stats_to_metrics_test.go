@@ -148,6 +148,13 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {Count: 1}, {}, {}, {},
 										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 10, 20, 30, 40},
+												},
+											},
+										},
 									},
 								},
 							},
@@ -176,6 +183,13 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {}, {Count: 1}, {}, {},
 										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 10, 20, 30, 40},
+												},
+											},
+										},
 									},
 								},
 							},
@@ -203,6 +217,13 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 										SumOfSquaredDeviation: 0,
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {}, {Count: 1}, {}, {},
+										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 10, 20, 30, 40},
+												},
+											},
 										},
 									},
 								},
@@ -298,6 +319,13 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {}, {}, {Count: 1}, {},
 										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 5, 10, 20, 50},
+												},
+											},
+										},
 									},
 								},
 							},
@@ -326,6 +354,13 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 										SumOfSquaredDeviation: 0,
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{Count: 1}, {}, {}, {}, {},
+										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 5, 10, 20, 50},
+												},
+											},
 										},
 									},
 								},
@@ -530,6 +565,13 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {Count: 1}, {}, {}, {},
 										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 10, 20, 30, 40},
+												},
+											},
+										},
 									},
 								},
 							},
@@ -558,6 +600,13 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {}, {Count: 1}, {}, {},
 										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 10, 20, 30, 40},
+												},
+											},
+										},
 									},
 								},
 							},
@@ -585,6 +634,13 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 										SumOfSquaredDeviation: 0,
 										Buckets: []*metricspb.DistributionValue_Bucket{
 											{}, {}, {Count: 1}, {}, {},
+										},
+										BucketOptions: &metricspb.DistributionValue_BucketOptions{
+											Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+												Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+													Bounds: []float64{0, 10, 20, 30, 40},
+												},
+											},
 										},
 									},
 								},

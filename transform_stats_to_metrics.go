@@ -172,7 +172,7 @@ func viewDataToTimeseries(vd *view.Data) ([]*metricspb.TimeSeries, error) {
 	// of the Label keys in the metric descriptor.
 	for _, row := range vd.Rows {
 		labelValues := labelValuesFromTags(row.Tags)
-		point := rowToPoint(row, endTimestamp, mType)
+		point := rowToPoint(vd.View, row, endTimestamp, mType)
 		timeseries = append(timeseries, &metricspb.TimeSeries{
 			StartTimestamp: startTimestamp,
 			LabelValues:    labelValues,
@@ -195,7 +195,7 @@ func timeToProtoTimestamp(t time.Time) *timestamp.Timestamp {
 	}
 }
 
-func rowToPoint(row *view.Row, endTimestamp *timestamp.Timestamp, mType measureType) *metricspb.Point {
+func rowToPoint(v *view.View, row *view.Row, endTimestamp *timestamp.Timestamp, mType measureType) *metricspb.Point {
 	pt := &metricspb.Point{
 		Timestamp: endTimestamp,
 	}
@@ -210,7 +210,13 @@ func rowToPoint(row *view.Row, endTimestamp *timestamp.Timestamp, mType measureT
 				Count:   data.Count,
 				Sum:     float64(data.Count) * data.Mean, // because Mean := Sum/Count
 				Buckets: bucketsToProtoBuckets(data.CountPerBucket, data.ExemplarsPerBucket),
-
+				BucketOptions: &metricspb.DistributionValue_BucketOptions{
+					Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+						Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+							Bounds: v.Aggregation.Buckets,
+						},
+					},
+				},
 				SumOfSquaredDeviation: data.SumOfSquaredDev,
 			}}
 
