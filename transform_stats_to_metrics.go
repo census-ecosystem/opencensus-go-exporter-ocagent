@@ -274,10 +274,16 @@ func labelValuesFromTags(tags []tag.Tag) []*metricspb.LabelValue {
 	for _, tag_ := range tags {
 		labelValues = append(labelValues, &metricspb.LabelValue{
 			Value: tag_.Value,
+
 			// It is imperative that we set the "HasValue" attribute,
 			// in order to distinguish missing a label from the empty string.
 			// https://godoc.org/github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1#LabelValue.HasValue
-			HasValue: true,
+			//
+			// OpenCensus-Go uses non-pointers for tags as seen by this function's arguments,
+			// so the best case that we can use to distinguish missing labels/tags from the
+			// empty string is by checking if the Tag.Key.Name() != "" to indicate that we have
+			// a value.
+			HasValue: tag_.Key.Name() != "",
 		})
 	}
 	return labelValues

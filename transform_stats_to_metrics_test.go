@@ -980,6 +980,140 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 	testViewDataToMetrics(t, tests)
 }
 
+func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
+	startTime := time.Date(2018, 11, 25, 15, 38, 18, 997, time.UTC)
+	endTime := startTime.Add(100 * time.Millisecond)
+
+	tests := []*test{
+		// Testing with a stats.Float64 measure.
+		{
+			in: &view.Data{
+				Start: startTime,
+				End:   endTime,
+				View: &view.View{
+					Name:        "ocagent.io/latency",
+					Description: "speed of the various runners",
+					Aggregation: view.Sum(),
+					TagKeys:     []tag.Key{keyField, keyName, keyPlayerName},
+					Measure:     mSprinterLatencyMs,
+				},
+				Rows: []*view.Row{
+					{
+						Tags: []tag.Tag{
+							{}, // Testing a missing tag
+							{Key: keyName, Value: "sprinter-#10"},
+							{Key: keyPlayerName, Value: ""},
+						},
+						Data: &view.SumData{Value: 27},
+					},
+				},
+			},
+			want: &metricspb.Metric{
+				Descriptor_: &metricspb.Metric_MetricDescriptor{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "ocagent.io/latency",
+						Description: "speed of the various runners",
+						Unit:        "ms",
+						Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
+						LabelKeys: []*metricspb.LabelKey{
+							{Key: "field"},
+							{Key: "name"},
+							{Key: "player_name"},
+						},
+					},
+				},
+				Timeseries: []*metricspb.TimeSeries{
+					{
+						StartTimestamp: &timestamp.Timestamp{
+							Seconds: 1543160298,
+							Nanos:   997,
+						},
+						LabelValues: []*metricspb.LabelValue{
+							{Value: "", HasValue: false},
+							{Value: "sprinter-#10", HasValue: true},
+							{Value: "", HasValue: true},
+						},
+						Points: []*metricspb.Point{
+							{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 1543160298,
+									Nanos:   100000997,
+								},
+								Value: &metricspb.Point_DoubleValue{DoubleValue: 27},
+							},
+						},
+					},
+				},
+			},
+		},
+
+		// Testing with a stats.Int64 measure.
+		{
+			in: &view.Data{
+				Start: startTime,
+				End:   endTime,
+				View: &view.View{
+					Name:        "ocagent.io/fouls",
+					Description: "the number of fouls by players",
+					Aggregation: view.Sum(),
+					TagKeys:     []tag.Key{keyField, keyName, keyPlayerName},
+					Measure:     mFouls,
+				},
+				Rows: []*view.Row{
+					{
+						Tags: []tag.Tag{
+							{},
+							{Key: keyName, Value: "player_1"},
+							{Key: keyField, Value: ""},
+						},
+						Data: &view.SumData{Value: 3},
+					},
+				},
+			},
+			want: &metricspb.Metric{
+				Descriptor_: &metricspb.Metric_MetricDescriptor{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "ocagent.io/fouls",
+						Description: "the number of fouls by players",
+						Unit:        "1",
+						Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
+						LabelKeys: []*metricspb.LabelKey{
+							{Key: "field"},
+							{Key: "name"},
+							{Key: "player_name"},
+						},
+					},
+				},
+				Timeseries: []*metricspb.TimeSeries{
+					{
+						StartTimestamp: &timestamp.Timestamp{
+							Seconds: 1543160298,
+							Nanos:   997,
+						},
+						LabelValues: []*metricspb.LabelValue{
+							{Value: "", HasValue: false},
+							{Value: "player_1", HasValue: true},
+							{Value: "", HasValue: true},
+						},
+						Points: []*metricspb.Point{
+							{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 1543160298,
+									Nanos:   100000997,
+								},
+								Value: &metricspb.Point_Int64Value{Int64Value: 3},
+							},
+						},
+					},
+				},
+				Resource: nil,
+			},
+		},
+	}
+
+	testViewDataToMetrics(t, tests)
+}
+
 func testViewDataToMetrics(t *testing.T, tests []*test) {
 	for i, tt := range tests {
 		got, err := viewDataToMetric(tt.in)
