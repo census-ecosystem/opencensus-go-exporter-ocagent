@@ -24,6 +24,7 @@ import (
 	"go.opencensus.io/tag"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/golang/protobuf/ptypes/wrappers"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )
@@ -224,7 +225,13 @@ func rowToPoint(v *view.View, row *view.Row, endTimestamp *timestamp.Timestamp, 
 		setPointValue(pt, data.Value, mType)
 
 	case *view.SumData:
-		setPointValue(pt, data.Value, mType)
+		pt.Value = &metricspb.Point_SummaryValue{
+			SummaryValue: &metricspb.SummaryValue{
+				Sum: &wrappers.DoubleValue{
+					Value: data.Value,
+				},
+			},
+		}
 	}
 
 	return pt

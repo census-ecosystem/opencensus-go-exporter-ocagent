@@ -27,6 +27,7 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 var (
@@ -913,7 +914,13 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
-								Value: &metricspb.Point_DoubleValue{DoubleValue: 27},
+								Value: &metricspb.Point_SummaryValue{
+									SummaryValue: &metricspb.SummaryValue{
+										Sum: &wrappers.DoubleValue{
+											Value: 27,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -932,7 +939,13 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
-								Value: &metricspb.Point_DoubleValue{DoubleValue: 25},
+								Value: &metricspb.Point_SummaryValue{
+									SummaryValue: &metricspb.SummaryValue{
+										Sum: &wrappers.DoubleValue{
+											Value: 25,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -1003,7 +1016,13 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
-								Value: &metricspb.Point_Int64Value{Int64Value: 3},
+								Value: &metricspb.Point_SummaryValue{
+									SummaryValue: &metricspb.SummaryValue{
+										Sum: &wrappers.DoubleValue{
+											Value: 3,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -1023,7 +1042,13 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
-								Value: &metricspb.Point_Int64Value{Int64Value: 1},
+								Value: &metricspb.Point_SummaryValue{
+									SummaryValue: &metricspb.SummaryValue{
+										Sum: &wrappers.DoubleValue{
+											Value: 1,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -1095,7 +1120,13 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
-								Value: &metricspb.Point_DoubleValue{DoubleValue: 27},
+								Value: &metricspb.Point_SummaryValue{
+									SummaryValue: &metricspb.SummaryValue{
+										Sum: &wrappers.DoubleValue{
+											Value: 27,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -1157,7 +1188,13 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
-								Value: &metricspb.Point_Int64Value{Int64Value: 3},
+								Value: &metricspb.Point_SummaryValue{
+									SummaryValue: &metricspb.SummaryValue{
+										Sum: &wrappers.DoubleValue{
+											Value: 3,
+										},
+									},
+								},
 							},
 						},
 					},
