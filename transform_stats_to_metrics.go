@@ -48,12 +48,10 @@ func viewDataToMetric(vd *view.Data) (*metricspb.Metric, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	metric := &metricspb.Metric{
 		Descriptor_: descriptor,
 		Timeseries:  timeseries,
-		// TODO: (@odeke-em) figure out how to derive
-		// the Resource from the view or from environment?
-		// Resource: derivedResource,
 	}
 	return metric, nil
 }

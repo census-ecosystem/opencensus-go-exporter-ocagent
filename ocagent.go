@@ -24,6 +24,7 @@ import (
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
 
+	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 
@@ -31,6 +32,7 @@ import (
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
@@ -61,6 +63,7 @@ type Exporter struct {
 	nodeInfo           *commonpb.Node
 	grpcClientConn     *grpc.ClientConn
 	reconnectionPeriod time.Duration
+	resource           *resourcepb.Resource
 
 	startOnce      sync.Once
 	stopCh         chan bool
@@ -108,6 +111,7 @@ func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	viewDataBundler.BundleCountThreshold = 500 // TODO: (@odeke-em) make this configurable.
 	e.viewDataBundler = viewDataBundler
 	e.nodeInfo = NodeWithStartTime(e.serviceName)
+	e.resource = resourceProtoFromEnv()
 
 	return e, nil
 }
@@ -187,7 +191,10 @@ func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *comm
 		return fmt.Errorf("Exporter.Start:: TraceServiceClient: %v", err)
 	}
 
-	firstTraceMessage := &agenttracepb.ExportTraceServiceRequest{Node: node}
+	firstTraceMessage := &agenttracepb.ExportTraceServiceRequest{
+		Node:     node,
+		Resource: ae.resource,
+	}
 	if err := traceExporter.Send(firstTraceMessage); err != nil {
 		return fmt.Errorf("Exporter.Start:: Failed to initiate the Config service: %v", err)
 	}
@@ -219,8 +226,11 @@ func (ae *Exporter) createMetricsServiceConnection(cc *grpc.ClientConn, node *co
 	if err != nil {
 		return fmt.Errorf("MetricsExporter: failed to start the service client: %v", err)
 	}
-	// Initiate the metrics service by sending over the first message just containing the Node.
-	firstMetricsMessage := &agentmetricspb.ExportMetricsServiceRequest{Node: node}
+	// Initiate the metrics service by sending over the first message just containing the Node and Resource.
+	firstMetricsMessage := &agentmetricspb.ExportMetricsServiceRequest{
+		Node:     node,
+		Resource: ae.resource,
+	}
 	if err := metricsExporter.Send(firstMetricsMessage); err != nil {
 		return fmt.Errorf("MetricsExporter:: failed to send the first message: %v", err)
 	}
@@ -416,4 +426,22 @@ func (ae *Exporter) uploadViewData(vdl []*view.Data) {
 func (ae *Exporter) Flush() {
 	ae.traceBundler.Flush()
 	ae.viewDataBundler.Flush()
+}
+
+func resourceProtoFromEnv() *resourcepb.Resource {
+	rs, _ := resource.FromEnv(context.Background())
+	if rs == nil {
+		return nil
+	}
+
+	rprs := &resourcepb.Resource{
+		Type: rs.Type,
+	}
+	if rs.Labels != nil {
+		rprs.Labels = make(map[string]string)
+		for k, v := range rs.Labels {
+			rprs.Labels[k] = v
+		}
+	}
+	return rprs
 }

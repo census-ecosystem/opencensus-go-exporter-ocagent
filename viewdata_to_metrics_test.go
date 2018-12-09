@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ocagent_test
+package ocagent
 
 import (
 	"encoding/json"
@@ -26,7 +26,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc"
 
-	"contrib.go.opencensus.io/exporter/ocagent"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 
@@ -56,9 +55,9 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 	}()
 
 	reconnectionPeriod := 2 * time.Millisecond
-	ocexp, err := ocagent.NewExporter(ocagent.WithInsecure(),
-		ocagent.WithAddress(":"+agentPortStr),
-		ocagent.WithReconnectionPeriod(reconnectionPeriod))
+	ocexp, err := NewExporter(WithInsecure(),
+		WithAddress(":"+agentPortStr),
+		WithReconnectionPeriod(reconnectionPeriod))
 	if err != nil {
 		t.Fatalf("Failed to create the ocagent exporter: %v", err)
 	}
@@ -100,8 +99,9 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 	// Now compare them with what we expect
 	want := []*agentmetricspb.ExportMetricsServiceRequest{
 		{
-			Node:    ocagent.NodeWithStartTime(""), // The first message identifying this application.
-			Metrics: nil,
+			Node:     NodeWithStartTime(""), // The first message identifying this application.
+			Metrics:  nil,
+			Resource: resourceProtoFromEnv(),
 		},
 		{
 			Metrics: []*metricspb.Metric{
