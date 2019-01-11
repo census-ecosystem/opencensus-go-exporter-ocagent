@@ -336,6 +336,14 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	_ = ae.traceBundler.Add(sd, 1)
 }
 
+func (ae *Exporter) ExportSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) {
+	if batch == nil {
+		return
+	}
+
+	go ae.uploadSpanBatch(batch)
+}
+
 func (ae *Exporter) ExportView(vd *view.Data) {
 	if vd == nil {
 		return
@@ -373,6 +381,26 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 		err := ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{
 			Spans: protoSpans,
 		})
+		if err != nil {
+			ae.setStateDisconnected()
+		}
+	}
+}
+
+func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) {
+	select {
+	case <-ae.stopCh:
+		return
+
+	default:
+		if !ae.connected() {
+			return
+		}
+
+		if batch == nil || len(batch.Spans) == 0 {
+			return
+		}
+		err := ae.traceExporter.Send(batch)
 		if err != nil {
 			ae.setStateDisconnected()
 		}
