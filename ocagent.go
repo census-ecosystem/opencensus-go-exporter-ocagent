@@ -52,7 +52,9 @@ type Exporter struct {
 	connectionState int32
 
 	// mu protects the non-atomic and non-channel variables
-	mu                 sync.RWMutex
+	mu sync.RWMutex
+	// senderMu protects the concurrent unsafe traceExporter client
+	senderMu           sync.RWMutex
 	started            bool
 	stopped            bool
 	agentAddress       string
@@ -378,9 +380,11 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 		if len(protoSpans) == 0 {
 			return
 		}
+		ae.senderMu.Lock()
 		err := ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{
 			Spans: protoSpans,
 		})
+		ae.senderMu.Unlock()
 		if err != nil {
 			ae.setStateDisconnected()
 		}
@@ -400,7 +404,9 @@ func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceReques
 		if batch == nil || len(batch.Spans) == 0 {
 			return
 		}
+		ae.senderMu.Lock()
 		err := ae.traceExporter.Send(batch)
+		ae.senderMu.Unlock()
 		if err != nil {
 			ae.setStateDisconnected()
 		}
