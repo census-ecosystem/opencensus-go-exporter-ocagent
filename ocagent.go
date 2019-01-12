@@ -125,7 +125,9 @@ const (
 
 var (
 	errAlreadyStarted = errors.New("already started")
+	errNotStarted     = errors.New("not started")
 	errStopped        = errors.New("stopped")
+	errNoConnection   = errors.New("no active connection")
 )
 
 // Start dials to the agent, establishing a connection to it. It also
@@ -289,9 +291,7 @@ func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService
 	}
 }
 
-var (
-	errNotStarted = errors.New("not started")
-)
+var ()
 
 // Stop shuts down all the connections and resources
 // related to the exporter.
@@ -339,7 +339,7 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 }
 
 func (ae *Exporter) ExportSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) error {
-	if batch == nil {
+	if batch == nil || len(batch.Spans) == 0 {
 		return nil
 	}
 
@@ -394,16 +394,13 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) error {
 	select {
 	case <-ae.stopCh:
-		return nil
+		return errStopped
 
 	default:
 		if !ae.connected() {
-			break
+			return errNoConnection
 		}
 
-		if batch == nil || len(batch.Spans) == 0 {
-			break
-		}
 		ae.senderMu.Lock()
 		err := ae.traceExporter.Send(batch)
 		ae.senderMu.Unlock()
@@ -411,8 +408,8 @@ func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceReques
 			ae.setStateDisconnected()
 			return err
 		}
+		return nil
 	}
-	return nil
 }
 
 func ocViewDataToPbMetrics(vdl []*view.Data) []*metricspb.Metric {
