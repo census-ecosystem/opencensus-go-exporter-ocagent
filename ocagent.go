@@ -291,8 +291,6 @@ func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService
 	}
 }
 
-var ()
-
 // Stop shuts down all the connections and resources
 // related to the exporter.
 func (ae *Exporter) Stop() error {
