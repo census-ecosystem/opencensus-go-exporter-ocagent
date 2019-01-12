@@ -338,12 +338,12 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	_ = ae.traceBundler.Add(sd, 1)
 }
 
-func (ae *Exporter) ExportSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) {
+func (ae *Exporter) ExportSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) error {
 	if batch == nil {
-		return
+		return nil
 	}
 
-	go ae.uploadSpanBatch(batch)
+	return ae.uploadSpanBatch(batch)
 }
 
 func (ae *Exporter) ExportView(vd *view.Data) {
@@ -391,26 +391,28 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 	}
 }
 
-func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) {
+func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) error {
 	select {
 	case <-ae.stopCh:
-		return
+		return nil
 
 	default:
 		if !ae.connected() {
-			return
+			break
 		}
 
 		if batch == nil || len(batch.Spans) == 0 {
-			return
+			break
 		}
 		ae.senderMu.Lock()
 		err := ae.traceExporter.Send(batch)
 		ae.senderMu.Unlock()
 		if err != nil {
 			ae.setStateDisconnected()
+			return err
 		}
 	}
+	return nil
 }
 
 func ocViewDataToPbMetrics(vdl []*view.Data) []*metricspb.Metric {

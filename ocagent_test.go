@@ -73,7 +73,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		name := tracepb.TruncatableString{Value: "AlwaysSample"}
 		batchedSpans = append(batchedSpans, &tracepb.Span{Name: &name})
 	}
-	exp.ExportSpanBatch(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+	_ = exp.ExportSpanBatch(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
 
 	<-time.After(10 * time.Millisecond)
 	exp.Flush()
@@ -122,7 +122,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		name := tracepb.TruncatableString{Value: "ProbabilitySampler-100%"}
 		batchedSpans = append(batchedSpans, &tracepb.Span{Name: &name})
 	}
-	exp.ExportSpanBatch(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+	_ = exp.ExportSpanBatch(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
 
 	<-time.After(10 * time.Millisecond)
 	exp.Flush()
@@ -296,7 +296,7 @@ func TestNewExporter_agentConnectionDiesThenReconnects(t *testing.T) {
 			name := tracepb.TruncatableString{Value: "Resurrected"}
 			batchedSpans = append(batchedSpans, &tracepb.Span{Name: &name})
 		}
-		exp.ExportSpanBatch(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+		_ = exp.ExportSpanBatch(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
 
 		<-time.After(reconnectionPeriod * 3)
 		nmaSpans := nma.getSpans()
