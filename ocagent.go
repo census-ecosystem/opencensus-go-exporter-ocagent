@@ -336,12 +336,29 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	_ = ae.traceBundler.Add(sd, 1)
 }
 
-func (ae *Exporter) ExportSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) error {
+func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceServiceRequest) error {
 	if batch == nil || len(batch.Spans) == 0 {
 		return nil
 	}
 
-	return ae.uploadSpanBatch(batch)
+	select {
+	case <-ae.stopCh:
+		return errStopped
+
+	default:
+		if !ae.connected() {
+			return errNoConnection
+		}
+
+		ae.senderMu.Lock()
+		err := ae.traceExporter.Send(batch)
+		ae.senderMu.Unlock()
+		if err != nil {
+			ae.setStateDisconnected()
+			return err
+		}
+		return nil
+	}
 }
 
 func (ae *Exporter) ExportView(vd *view.Data) {
@@ -386,27 +403,6 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 		if err != nil {
 			ae.setStateDisconnected()
 		}
-	}
-}
-
-func (ae *Exporter) uploadSpanBatch(batch *agenttracepb.ExportTraceServiceRequest) error {
-	select {
-	case <-ae.stopCh:
-		return errStopped
-
-	default:
-		if !ae.connected() {
-			return errNoConnection
-		}
-
-		ae.senderMu.Lock()
-		err := ae.traceExporter.Send(batch)
-		ae.senderMu.Unlock()
-		if err != nil {
-			ae.setStateDisconnected()
-			return err
-		}
-		return nil
 	}
 }
 
