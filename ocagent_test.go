@@ -66,6 +66,15 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		span.Annotatef([]trace.Attribute{trace.Int64Attribute("i", int64(i))}, "Annotation")
 		span.End()
 	}
+
+	m := 4
+	batchedSpans := make([]*tracepb.Span, 0, m)
+	for i := 0; i < m; i++ {
+		name := &tracepb.TruncatableString{Value: "AlwaysSample"}
+		batchedSpans = append(batchedSpans, &tracepb.Span{Name: name})
+	}
+	_ = exp.ExportTraceServiceRequest(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+
 	<-time.After(10 * time.Millisecond)
 	exp.Flush()
 
@@ -106,6 +115,15 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		span.Annotatef([]trace.Attribute{trace.BoolAttribute("odd", i&1 == 1)}, "Annotation")
 		span.End()
 	}
+
+	m = 3
+	batchedSpans = make([]*tracepb.Span, 0, m)
+	for i := 0; i < m; i++ {
+		name := &tracepb.TruncatableString{Value: "ProbabilitySampler-100%"}
+		batchedSpans = append(batchedSpans, &tracepb.Span{Name: name})
+	}
+	_ = exp.ExportTraceServiceRequest(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+
 	<-time.After(10 * time.Millisecond)
 	exp.Flush()
 
@@ -154,10 +172,10 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		t.Errorf("ReceivedConfigs: got %d want %d", g, w)
 	}
 
-	// Expecting 7 spanData that were sampled, given that
+	// Expecting 14 spanData that were sampled, given that
 	// two of the trace configs pushed down to the client
 	// were {NeverSample, ProbabilitySampler(0.0)}
-	if g, w := len(spans), 7; g != w {
+	if g, w := len(spans), 14; g != w {
 		t.Errorf("Spans: got %d want %d", g, w)
 	}
 
@@ -272,11 +290,18 @@ func TestNewExporter_agentConnectionDiesThenReconnects(t *testing.T) {
 			exp.ExportSpan(&trace.SpanData{Name: "Resurrected"})
 		}
 		exp.Flush()
-		<-time.After(reconnectionPeriod * 3)
+		m := 10
+		batchedSpans := make([]*tracepb.Span, 0, m)
+		for i := 0; i < m; i++ {
+			name := &tracepb.TruncatableString{Value: "Resurrected"}
+			batchedSpans = append(batchedSpans, &tracepb.Span{Name: name})
+		}
+		_ = exp.ExportTraceServiceRequest(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
 
+		<-time.After(reconnectionPeriod * 3)
 		nmaSpans := nma.getSpans()
 		// Expecting 10 spanData that were sampled, given that
-		if g, w := len(nmaSpans), n; g != w {
+		if g, w := len(nmaSpans), n+m; g != w {
 			t.Errorf("Round #%d: Connected agent: spans: got %d want %d", j, g, w)
 		}
 
