@@ -21,58 +21,49 @@ const (
 	DefaultAgentHost string = "localhost"
 )
 
-type ExporterOption interface {
-	withExporter(e *Exporter)
-}
-
-type insecureGrpcConnection int
-
-var _ ExporterOption = (*insecureGrpcConnection)(nil)
-
-func (igc *insecureGrpcConnection) withExporter(e *Exporter) {
-	e.canDialInsecure = true
-}
+type ExporterOption func(e *Exporter)
 
 // WithInsecure disables client transport security for the exporter's gRPC connection
 // just like grpc.WithInsecure() https://godoc.org/google.golang.org/grpc#WithInsecure
 // does. Note, by default, client security is required unless WithInsecure is used.
-func WithInsecure() ExporterOption { return new(insecureGrpcConnection) }
-
-type addressSetter string
-
-func (as addressSetter) withExporter(e *Exporter) {
-	e.agentAddress = string(as)
+func WithInsecure() ExporterOption {
+	return func(e *Exporter) {
+		e.canDialInsecure = true
+	}
 }
-
-var _ ExporterOption = (*addressSetter)(nil)
 
 // WithAddress allows one to set the address that the exporter will
 // connect to the agent on. If unset, it will instead try to use
 // connect to DefaultAgentHost:DefaultAgentPort
 func WithAddress(addr string) ExporterOption {
-	return addressSetter(addr)
+	return func(e *Exporter) {
+		e.agentAddress = addr
+	}
 }
-
-type serviceNameSetter string
-
-func (sns serviceNameSetter) withExporter(e *Exporter) {
-	e.serviceName = string(sns)
-}
-
-var _ ExporterOption = (*serviceNameSetter)(nil)
 
 // WithServiceName allows one to set/override the service name
 // that the exporter will report to the agent.
 func WithServiceName(serviceName string) ExporterOption {
-	return serviceNameSetter(serviceName)
+	return func(e *Exporter) {
+		e.serviceName = serviceName
+	}
 }
 
-type reconnectionPeriod time.Duration
-
-func (rp reconnectionPeriod) withExporter(e *Exporter) {
-	e.reconnectionPeriod = time.Duration(rp)
-}
-
+// WithReconnectionPeriod sets the time after which the exporter will
+// try to reconnect
 func WithReconnectionPeriod(rp time.Duration) ExporterOption {
-	return reconnectionPeriod(rp)
+	return func(e *Exporter) {
+		e.reconnectionPeriod = rp
+	}
+}
+
+// UseCompressor will set the compressor for the gRPC client to use when sending requests.
+// It is the responsibility of the caller to ensure that the compressor set has been registered
+// with google.golang.org/grpc/encoding. This can be done by encoding.RegisterCompressor. Some
+// compressors auto-register on import, such as gzip, which can be registered by calling
+// `import _ "google.golang.org/grpc/encoding/gzip"`
+func UseCompressor(compressorName string) ExporterOption {
+	return func(e *Exporter) {
+		e.compressor = &compressorName
+	}
 }

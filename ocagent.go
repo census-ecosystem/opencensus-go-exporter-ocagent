@@ -66,6 +66,7 @@ type Exporter struct {
 	grpcClientConn     *grpc.ClientConn
 	reconnectionPeriod time.Duration
 	resource           *resourcepb.Resource
+	compressor         *string
 
 	startOnce      sync.Once
 	stopCh         chan bool
@@ -97,7 +98,7 @@ const spanDataBufferSize = 300
 func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	e := new(Exporter)
 	for _, opt := range opts {
-		opt.withExporter(e)
+		opt(e)
 	}
 	traceBundler := bundler.NewBundler((*trace.SpanData)(nil), func(bundle interface{}) {
 		e.uploadTraces(bundle.([]*trace.SpanData))
@@ -252,6 +253,9 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 	var dialOpts []grpc.DialOption
 	if ae.canDialInsecure {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
+	}
+	if ae.compressor != nil {
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.UseCompressor(*ae.compressor)))
 	}
 	return grpc.Dial(addr, dialOpts...)
 }
