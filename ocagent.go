@@ -98,7 +98,7 @@ const spanDataBufferSize = 300
 func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	e := new(Exporter)
 	for _, opt := range opts {
-		opt(e)
+		opt.withExporter(e)
 	}
 	traceBundler := bundler.NewBundler((*trace.SpanData)(nil), func(bundle interface{}) {
 		e.uploadTraces(bundle.([]*trace.SpanData))
