@@ -55,9 +55,11 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 	}()
 
 	reconnectionPeriod := 2 * time.Millisecond
-	ocexp, err := NewExporter(WithInsecure(),
+	ocexp, err := NewExporter(
+		WithInsecure(),
 		WithAddress(":"+agentPortStr),
-		WithReconnectionPeriod(reconnectionPeriod))
+		WithReconnectionPeriod(reconnectionPeriod),
+	)
 	if err != nil {
 		t.Fatalf("Failed to create the ocagent exporter: %v", err)
 	}
