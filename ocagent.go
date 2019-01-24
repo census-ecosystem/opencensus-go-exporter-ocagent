@@ -66,7 +66,7 @@ type Exporter struct {
 	grpcClientConn     *grpc.ClientConn
 	reconnectionPeriod time.Duration
 	resource           *resourcepb.Resource
-	compressor         *string
+	compressor         string
 
 	startOnce      sync.Once
 	stopCh         chan bool
@@ -254,8 +254,8 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 	if ae.canDialInsecure {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
-	if ae.compressor != nil {
-		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.UseCompressor(*ae.compressor)))
+	if ae.compressor != "" {
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.UseCompressor(ae.compressor)))
 	}
 	return grpc.Dial(addr, dialOpts...)
 }

@@ -64,6 +64,6 @@ func WithReconnectionPeriod(rp time.Duration) ExporterOption {
 // `import _ "google.golang.org/grpc/encoding/gzip"`
 func UseCompressor(compressorName string) ExporterOption {
 	return func(e *Exporter) {
-		e.compressor = &compressorName
+		e.compressor = compressorName
 	}
 }
