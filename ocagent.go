@@ -23,6 +23,7 @@ import (
 
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
@@ -191,7 +192,11 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *commonpb.Node) error {
 	// Initiate the trace service by sending over node identifier info.
 	traceSvcClient := agenttracepb.NewTraceServiceClient(cc)
-	traceExporter, err := traceSvcClient.Export(context.Background())
+	ctx := context.Background()
+	if len(ae.headers) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(ae.headers))
+	}
+	traceExporter, err := traceSvcClient.Export(ctx)
 	if err != nil {
 		return fmt.Errorf("Exporter.Start:: TraceServiceClient: %v", err)
 	}

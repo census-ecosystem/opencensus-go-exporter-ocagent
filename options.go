@@ -91,3 +91,15 @@ func (c compressorSetter) withExporter(e *Exporter) {
 func UseCompressor(compressorName string) ExporterOption {
 	return compressorSetter(compressorName)
 }
+
+type headerSetter map[string]string
+
+func (h headerSetter) withExporter(e *Exporter) {
+	e.headers = map[string]string(h)
+}
+
+// WithHeaders will send the provided headers when the gRPC stream connection
+// is instantiated
+func WithHeaders(headers map[string]string) ExporterOption {
+	return headerSetter(headers)
+}
