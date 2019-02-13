@@ -68,6 +68,7 @@ type Exporter struct {
 	reconnectionPeriod time.Duration
 	resource           *resourcepb.Resource
 	compressor         string
+	headers            map[string]string
 
 	startOnce      sync.Once
 	stopCh         chan bool
