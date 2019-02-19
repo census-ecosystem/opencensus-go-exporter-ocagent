@@ -23,6 +23,7 @@ import (
 
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
 	"go.opencensus.io/resource"
@@ -82,6 +83,8 @@ type Exporter struct {
 	// from OpenCensus-Go view.Data to metricspb.Metric.
 	// Please do not confuse it with metricsBundler!
 	viewDataBundler *bundler.Bundler
+
+	clientTransportCredentials credentials.TransportCredentials
 }
 
 func NewExporter(opts ...ExporterOption) (*Exporter, error) {
@@ -257,7 +260,9 @@ func (ae *Exporter) createMetricsServiceConnection(cc *grpc.ClientConn, node *co
 func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 	addr := ae.prepareAgentAddress()
 	var dialOpts []grpc.DialOption
-	if ae.canDialInsecure {
+	if ae.clientTransportCredentials != nil {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(ae.clientTransportCredentials))
+	} else if ae.canDialInsecure {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
 	if ae.compressor != "" {

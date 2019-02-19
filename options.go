@@ -14,7 +14,11 @@
 
 package ocagent
 
-import "time"
+import (
+	"time"
+
+	"google.golang.org/grpc/credentials"
+)
 
 const (
 	DefaultAgentPort uint16 = 55678
@@ -102,4 +106,23 @@ func (h headerSetter) withExporter(e *Exporter) {
 // is instantiated
 func WithHeaders(headers map[string]string) ExporterOption {
 	return headerSetter(headers)
+}
+
+type clientCredentials struct {
+	credentials.TransportCredentials
+}
+
+var _ ExporterOption = (*clientCredentials)(nil)
+
+// WithTLSCredentials allows the connection to use TLS credentials
+// when talking to the server. It takes in grpc.TransportCredentials instead
+// of say a Certificate file or a tls.Certificate, because the retrieving
+// these credentials can be done in many ways e.g. plain file, in code tls.Config
+// or by certificate rotation, so it is up to the caller to decide what to use.
+func WithTLSCredentials(creds credentials.TransportCredentials) ExporterOption {
+	return &clientCredentials{TransportCredentials: creds}
+}
+
+func (cc *clientCredentials) withExporter(e *Exporter) {
+	e.clientTransportCredentials = cc.TransportCredentials
 }
