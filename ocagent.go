@@ -268,7 +268,12 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 	if ae.compressor != "" {
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.UseCompressor(ae.compressor)))
 	}
-	return grpc.Dial(addr, dialOpts...)
+
+	ctx := context.Background()
+	if len(ae.headers) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(ae.headers))
+	}
+	return grpc.DialContext(ctx, addr, dialOpts...)
 }
 
 func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService_ConfigClient) error {
