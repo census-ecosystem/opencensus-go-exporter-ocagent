@@ -54,7 +54,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 	ma.configsToSend <- &agenttracepb.UpdatedLibraryConfig{
 		Config: &tracepb.TraceConfig{
 			Sampler: &tracepb.TraceConfig_ConstantSampler{
-				ConstantSampler: &tracepb.ConstantSampler{Decision: true}, // Always sample
+				ConstantSampler: &tracepb.ConstantSampler{Decision: tracepb.ConstantSampler_ALWAYS_ON}, // Always sample
 			},
 		},
 	}
@@ -82,7 +82,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 	ma.configsToSend <- &agenttracepb.UpdatedLibraryConfig{
 		Config: &tracepb.TraceConfig{
 			Sampler: &tracepb.TraceConfig_ConstantSampler{
-				ConstantSampler: &tracepb.ConstantSampler{Decision: false}, // Never sample
+				ConstantSampler: &tracepb.ConstantSampler{Decision: tracepb.ConstantSampler_ALWAYS_OFF}, // Never sample
 			},
 		},
 	}

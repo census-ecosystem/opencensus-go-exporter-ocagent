@@ -112,16 +112,14 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/latency",
-						Description: "latency of runners for a 100m dash",
-						Unit:        "ms", // Derived from the measure
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/latency",
+					Description: "latency of runners for a 100m dash",
+					Unit:        "ms", // Derived from the measure
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -281,17 +279,15 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/fouls",
-						Description: "The number of fouls recorded",
-						Unit:        "1", // Derived from the measure
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-							{Key: "player_name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/fouls",
+					Description: "The number of fouls recorded",
+					Unit:        "1", // Derived from the measure
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
+						{Key: "player_name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -413,16 +409,14 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/chronospeed",
-						Description: "the chronometer readings per referee",
-						Unit:        "ms",
-						Type:        metricspb.MetricDescriptor_GAUGE_DOUBLE,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/chronospeed",
+					Description: "the chronometer readings per referee",
+					Unit:        "ms",
+					Type:        metricspb.MetricDescriptor_GAUGE_DOUBLE,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -529,16 +523,14 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/latency",
-						Description: "latency of runners for a 100m dash",
-						Unit:        "ms", // Derived from the measure
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/latency",
+					Description: "latency of runners for a 100m dash",
+					Unit:        "ms", // Derived from the measure
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -695,16 +687,14 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/counts",
-						Description: "count of runners for a 100m dash",
-						Unit:        "ms",
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/counts",
+					Description: "count of runners for a 100m dash",
+					Unit:        "ms",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -783,17 +773,15 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/fouls",
-						Description: "the number of fouls by players",
-						Unit:        "1",
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-							{Key: "player_name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/fouls",
+					Description: "the number of fouls by players",
+					Unit:        "1",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
+						{Key: "player_name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -885,16 +873,14 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/latency",
-						Description: "speed of the various runners",
-						Unit:        "ms",
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/latency",
+					Description: "speed of the various runners",
+					Unit:        "ms",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -973,17 +959,15 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/fouls",
-						Description: "the number of fouls by players",
-						Unit:        "1",
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-							{Key: "player_name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/fouls",
+					Description: "the number of fouls by players",
+					Unit:        "1",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
+						{Key: "player_name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -1065,17 +1049,15 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/latency",
-						Description: "speed of the various runners",
-						Unit:        "ms",
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-							{Key: "player_name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/latency",
+					Description: "speed of the various runners",
+					Unit:        "ms",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
+						{Key: "player_name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{
@@ -1127,17 +1109,15 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 				},
 			},
 			want: &metricspb.Metric{
-				Descriptor_: &metricspb.Metric_MetricDescriptor{
-					MetricDescriptor: &metricspb.MetricDescriptor{
-						Name:        "ocagent.io/fouls",
-						Description: "the number of fouls by players",
-						Unit:        "1",
-						Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
-						LabelKeys: []*metricspb.LabelKey{
-							{Key: "field"},
-							{Key: "name"},
-							{Key: "player_name"},
-						},
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "ocagent.io/fouls",
+					Description: "the number of fouls by players",
+					Unit:        "1",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
+					LabelKeys: []*metricspb.LabelKey{
+						{Key: "field"},
+						{Key: "name"},
+						{Key: "player_name"},
 					},
 				},
 				Timeseries: []*metricspb.TimeSeries{

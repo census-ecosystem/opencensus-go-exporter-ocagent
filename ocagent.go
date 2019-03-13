@@ -294,7 +294,7 @@ func (ae *Exporter) handleConfigStreaming(configStream agenttracepb.TraceService
 		if psamp := cfg.GetProbabilitySampler(); psamp != nil {
 			trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(psamp.SamplingProbability)})
 		} else if csamp := cfg.GetConstantSampler(); csamp != nil {
-			alwaysSample := csamp.Decision == true
+			alwaysSample := csamp.Decision == tracepb.ConstantSampler_ALWAYS_ON
 			if alwaysSample {
 				trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 			} else {

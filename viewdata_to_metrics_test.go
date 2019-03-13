@@ -108,14 +108,12 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 		{
 			Metrics: []*metricspb.Metric{
 				{
-					Descriptor_: &metricspb.Metric_MetricDescriptor{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:        "ocagent.io/latency",
-							Description: "The latency of the various methods",
-							Unit:        "ms", // Derived from the measure
-							Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
-							LabelKeys:   nil,
-						},
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "ocagent.io/latency",
+						Description: "The latency of the various methods",
+						Unit:        "ms", // Derived from the measure
+						Type:        metricspb.MetricDescriptor_CUMULATIVE_INT64,
+						LabelKeys:   nil,
 					},
 					Timeseries: []*metricspb.TimeSeries{
 						{
