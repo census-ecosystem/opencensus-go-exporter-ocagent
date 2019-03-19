@@ -18,7 +18,7 @@ import (
 	"errors"
 	"time"
 
-	"go.opencensus.io/exemplar"
+	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -239,12 +239,12 @@ func setPointValue(pt *metricspb.Point, value float64, mType measureType) {
 // countPerBucket and exemplars are of the same length in well formed data,
 // otherwise ensure that even if exemplars are non-existent that we always
 // insert counts and create distribution value buckets.
-func bucketsToProtoBuckets(countPerBucket []int64, exemplars []*exemplar.Exemplar) []*metricspb.DistributionValue_Bucket {
+func bucketsToProtoBuckets(countPerBucket []int64, exemplars []*metricdata.Exemplar) []*metricspb.DistributionValue_Bucket {
 	distBuckets := make([]*metricspb.DistributionValue_Bucket, len(countPerBucket))
 	for i := 0; i < len(countPerBucket); i++ {
 		count := countPerBucket[i]
 
-		var exmplr *exemplar.Exemplar
+		var exmplr *metricdata.Exemplar
 		if i < len(exemplars) {
 			exmplr = exemplars[i]
 		}
