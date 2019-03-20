@@ -202,8 +202,8 @@ func rowToPoint(v *view.View, row *view.Row, endTimestamp *timestamp.Timestamp, 
 	case *view.DistributionData:
 		pt.Value = &metricspb.Point_DistributionValue{
 			DistributionValue: &metricspb.DistributionValue{
-				Count:   data.Count,
-				Sum:     float64(data.Count) * data.Mean, // because Mean := Sum/Count
+				Count: data.Count,
+				Sum:   float64(data.Count) * data.Mean, // because Mean := Sum/Count
 				// TODO: Add Exemplar
 				Buckets: bucketsToProtoBuckets(data.CountPerBucket),
 				BucketOptions: &metricspb.DistributionValue_BucketOptions{
@@ -242,7 +242,7 @@ func bucketsToProtoBuckets(countPerBucket []int64) []*metricspb.DistributionValu
 		count := countPerBucket[i]
 
 		distBuckets[i] = &metricspb.DistributionValue_Bucket{
-			Count:    count,
+			Count: count,
 		}
 	}
 
