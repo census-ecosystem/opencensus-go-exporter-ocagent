@@ -19,9 +19,11 @@ import (
 func main() {
 	zPagesMux := http.NewServeMux()
 	zpages.Handle(zPagesMux, "/debug")
-	if err := http.ListenAndServe(":9999", zPagesMux); err != nil {
-		log.Fatalf("Failed to serve zPages")
-	}
+	go func() {
+		if err := http.ListenAndServe(":9999", zPagesMux); err != nil {
+			log.Fatalf("Failed to serve zPages")
+		}
+	} ()
 
 	oce, err := ocagent.NewExporter(
 		ocagent.WithInsecure(),
@@ -32,7 +34,7 @@ func main() {
 		log.Fatalf("Failed to create ocagent-exporter: %v", err)
 	}
 	trace.RegisterExporter(oce)
-	// view.RegisterExporter(oce)
+	view.RegisterExporter(oce)
 
 	// Some configurations to get observability signals out.
 	view.SetReportingPeriod(7 * time.Second)
