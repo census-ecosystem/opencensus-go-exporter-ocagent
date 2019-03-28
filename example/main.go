@@ -23,7 +23,7 @@ func main() {
 		if err := http.ListenAndServe(":9999", zPagesMux); err != nil {
 			log.Fatalf("Failed to serve zPages")
 		}
-	} ()
+	}()
 
 	oce, err := ocagent.NewExporter(
 		ocagent.WithInsecure(),
