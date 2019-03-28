@@ -26,8 +26,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
-	"go.opencensus.io/resource"
 	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 
