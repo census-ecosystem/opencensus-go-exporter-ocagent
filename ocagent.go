@@ -388,8 +388,11 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 		if err != nil {
 			if err == io.EOF {
 				ae.recvMu.Lock()
-				for _, err = ae.traceExporter.Recv(); err == nil; _, err = ae.traceExporter.Recv() {
-					// Loop until actual error (or io.EOF) is received.
+				for {
+					_, err = ae.traceExporter.Recv()
+					if err != nil {
+						break
+					}
 				}
 				ae.recvMu.Unlock()
 			}
