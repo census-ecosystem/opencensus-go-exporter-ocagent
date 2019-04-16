@@ -25,8 +25,11 @@ const (
 	sConnected
 )
 
-func (ae *Exporter) setStateDisconnected() {
+func (ae *Exporter) setStateDisconnected(err error) {
 	atomic.StoreInt32(&ae.connectionState, sDisconnected)
+	ae.mu.Lock()
+	ae.connectErr = err
+	ae.mu.Unlock()
 	select {
 	case ae.disconnectedCh <- true:
 	default:
@@ -35,6 +38,9 @@ func (ae *Exporter) setStateDisconnected() {
 
 func (ae *Exporter) setStateConnected() {
 	atomic.StoreInt32(&ae.connectionState, sConnected)
+	ae.mu.Lock()
+	ae.connectErr = nil
+	ae.mu.Unlock()
 }
 
 func (ae *Exporter) connected() bool {
@@ -77,7 +83,7 @@ func (ae *Exporter) indefiniteBackgroundConnection() error {
 		if err := ae.connect(); err == nil {
 			ae.setStateConnected()
 		} else {
-			ae.setStateDisconnected()
+			ae.setStateDisconnected(err)
 		}
 
 		// Apply some jitter to avoid lockstep retrials of other
