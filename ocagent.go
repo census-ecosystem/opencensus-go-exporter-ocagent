@@ -139,7 +139,6 @@ var (
 	errAlreadyStarted = errors.New("already started")
 	errNotStarted     = errors.New("not started")
 	errStopped        = errors.New("stopped")
-	errNoConnection   = errors.New("no active connection")
 )
 
 // Start dials to the agent, establishing a connection to it. It also
@@ -380,7 +379,7 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 
 	default:
 		if lastConnectErrPtr := ae.loadLastConnectError(); lastConnectErrPtr != nil {
-			return fmt.Errorf("no active connection, last connection error: %v", *lastConnectErrPtr)
+			return fmt.Errorf("ExportTraceServiceRequest: no active connection, last connection error: %v", *lastConnectErrPtr)
 		}
 
 		ae.senderMu.Lock()
