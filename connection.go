@@ -16,13 +16,21 @@ package ocagent
 
 import (
 	"math/rand"
+	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
+func (ae *Exporter) loadLastConnectError() *error {
+	return (*error)(atomic.LoadPointer(&ae.lastConnectErrPtr))
+}
+
+func (ae *Exporter) storeLastConnectError(err *error) {
+	atomic.StorePointer(&ae.lastConnectErrPtr, unsafe.Pointer(err))
+}
+
 func (ae *Exporter) setStateDisconnected(err error) {
-	ae.mu.Lock()
-	ae.connectErr = err
-	ae.mu.Unlock()
+	ae.storeLastConnectError(&err)
 	select {
 	case ae.disconnectedCh <- true:
 	default:
@@ -30,20 +38,11 @@ func (ae *Exporter) setStateDisconnected(err error) {
 }
 
 func (ae *Exporter) setStateConnected() {
-	ae.mu.Lock()
-	ae.connectErr = nil
-	ae.mu.Unlock()
-}
-
-func (ae *Exporter) lastConnectErr() error {
-	ae.mu.RLock()
-	lastConnectErr := ae.connectErr
-	ae.mu.RUnlock()
-	return lastConnectErr
+	ae.storeLastConnectError(nil)
 }
 
 func (ae *Exporter) connected() bool {
-	return ae.lastConnectErr() == nil
+	return ae.loadLastConnectError() == nil
 }
 
 const defaultConnReattemptPeriod = 10 * time.Second

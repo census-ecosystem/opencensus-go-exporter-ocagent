@@ -21,6 +21,7 @@ import (
 	"io"
 	"sync"
 	"time"
+	"unsafe"
 
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
@@ -72,7 +73,7 @@ type Exporter struct {
 	resource           *resourcepb.Resource
 	compressor         string
 	headers            map[string]string
-	connectErr         error
+	lastConnectErrPtr  unsafe.Pointer
 
 	startOnce      sync.Once
 	stopCh         chan bool
@@ -378,11 +379,8 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 		return errStopped
 
 	default:
-		if !ae.connected() {
-			ae.mu.RLock()
-			lastConnectErr := ae.connectErr
-			ae.mu.RUnlock()
-			return fmt.Errorf("no active connection, last connection error: %v", lastConnectErr)
+		if lastConnectErrPtr := ae.loadLastConnectError(); lastConnectErrPtr != nil {
+			return fmt.Errorf("no active connection, last connection error: %v", *lastConnectErrPtr)
 		}
 
 		ae.senderMu.Lock()
