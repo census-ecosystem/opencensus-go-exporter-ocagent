@@ -16,17 +16,10 @@ package ocagent
 
 import (
 	"math/rand"
-	"sync/atomic"
 	"time"
 )
 
-const (
-	sDisconnected int32 = 5 + iota
-	sConnected
-)
-
 func (ae *Exporter) setStateDisconnected(err error) {
-	atomic.StoreInt32(&ae.connectionState, sDisconnected)
 	ae.mu.Lock()
 	ae.connectErr = err
 	ae.mu.Unlock()
@@ -37,14 +30,20 @@ func (ae *Exporter) setStateDisconnected(err error) {
 }
 
 func (ae *Exporter) setStateConnected() {
-	atomic.StoreInt32(&ae.connectionState, sConnected)
 	ae.mu.Lock()
 	ae.connectErr = nil
 	ae.mu.Unlock()
 }
 
+func (ae *Exporter) lastConnectErr() error {
+	ae.mu.RLock()
+	lastConnectErr := ae.connectErr
+	ae.mu.RUnlock()
+	return lastConnectErr
+}
+
 func (ae *Exporter) connected() bool {
-	return atomic.LoadInt32(&ae.connectionState) == sConnected
+	return ae.lastConnectErr() == nil
 }
 
 const defaultConnReattemptPeriod = 10 * time.Second

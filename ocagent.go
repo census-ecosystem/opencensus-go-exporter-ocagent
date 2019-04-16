@@ -53,8 +53,6 @@ var _ trace.Exporter = (*Exporter)(nil)
 var _ view.Exporter = (*Exporter)(nil)
 
 type Exporter struct {
-	connectionState int32
-
 	// mu protects the non-atomic and non-channel variables
 	mu sync.RWMutex
 	// senderMu protects the concurrent unsafe send on traceExporter client
