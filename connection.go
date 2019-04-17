@@ -21,16 +21,24 @@ import (
 	"unsafe"
 )
 
-func (ae *Exporter) loadLastConnectError() *error {
-	return (*error)(atomic.LoadPointer(&ae.lastConnectErrPtr))
+func (ae *Exporter) loadLastConnectError() error {
+	errPtr := (*error)(atomic.LoadPointer(&ae.lastConnectErrPtr))
+	if errPtr == nil {
+		return nil
+	}
+	return *errPtr
 }
 
-func (ae *Exporter) storeLastConnectError(err *error) {
-	atomic.StorePointer(&ae.lastConnectErrPtr, unsafe.Pointer(err))
+func (ae *Exporter) storeLastConnectError(err error) {
+	var errPtr *error
+	if err != nil {
+		errPtr = &err
+	}
+	atomic.StorePointer(&ae.lastConnectErrPtr, unsafe.Pointer(errPtr))
 }
 
 func (ae *Exporter) setStateDisconnected(err error) {
-	ae.storeLastConnectError(&err)
+	ae.storeLastConnectError(err)
 	select {
 	case ae.disconnectedCh <- true:
 	default:

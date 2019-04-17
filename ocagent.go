@@ -156,6 +156,9 @@ func (ae *Exporter) Start() error {
 		ae.backgroundConnectionDoneCh = make(chan bool)
 		ae.mu.Unlock()
 
+		// An optimistic first connection attempt to ensure that
+		// applications under heavy load can immediately process
+		// data. See https://github.com/census-ecosystem/opencensus-go-exporter-ocagent/pull/63
 		if err := ae.connect(); err == nil {
 			ae.setStateConnected()
 		} else {
@@ -378,8 +381,8 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 		return errStopped
 
 	default:
-		if lastConnectErrPtr := ae.loadLastConnectError(); lastConnectErrPtr != nil {
-			return fmt.Errorf("ExportTraceServiceRequest: no active connection, last connection error: %v", *lastConnectErrPtr)
+		if lastConnectErr := ae.loadLastConnectError(); lastConnectErr != nil {
+			return fmt.Errorf("ExportTraceServiceRequest: no active connection, last connection error: %v", lastConnectErr)
 		}
 
 		ae.senderMu.Lock()
@@ -388,6 +391,7 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 		if err != nil {
 			if err == io.EOF {
 				ae.recvMu.Lock()
+				// Loop until actual error (or io.EOF) is received.
 				for {
 					_, err = ae.traceExporter.Recv()
 					if err != nil {
