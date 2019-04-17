@@ -29,7 +29,7 @@ func (ae *Exporter) lastConnectError() error {
 	return *errPtr
 }
 
-func (ae *Exporter) storeLastConnectError(err error) {
+func (ae *Exporter) saveLastConnectError(err error) {
 	var errPtr *error
 	if err != nil {
 		errPtr = &err
@@ -38,7 +38,7 @@ func (ae *Exporter) storeLastConnectError(err error) {
 }
 
 func (ae *Exporter) setStateDisconnected(err error) {
-	ae.storeLastConnectError(err)
+	ae.saveLastConnectError(err)
 	select {
 	case ae.disconnectedCh <- true:
 	default:
@@ -46,7 +46,7 @@ func (ae *Exporter) setStateDisconnected(err error) {
 }
 
 func (ae *Exporter) setStateConnected() {
-	ae.storeLastConnectError(nil)
+	ae.saveLastConnectError(nil)
 }
 
 func (ae *Exporter) connected() bool {
