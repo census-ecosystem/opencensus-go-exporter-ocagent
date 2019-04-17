@@ -381,7 +381,7 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 		return errStopped
 
 	default:
-		if lastConnectErr := ae.loadLastConnectError(); lastConnectErr != nil {
+		if lastConnectErr := ae.lastConnectError(); lastConnectErr != nil {
 			return fmt.Errorf("ExportTraceServiceRequest: no active connection, last connection error: %v", lastConnectErr)
 		}
 
@@ -391,7 +391,10 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 		if err != nil {
 			if err == io.EOF {
 				ae.recvMu.Lock()
-				// Loop until actual error (or io.EOF) is received.
+				// Perform a .Recv to try to find out why the RPC actually ended.
+				// See:
+				//   * https://github.com/grpc/grpc-go/blob/d389f9fac68eea0dcc49957d0b4cca5b3a0a7171/stream.go#L98-L100
+				//   * https://groups.google.com/forum/#!msg/grpc-io/XcN4hA9HonI/F_UDiejTAwAJ
 				for {
 					_, err = ae.traceExporter.Recv()
 					if err != nil {

@@ -21,7 +21,7 @@ import (
 	"unsafe"
 )
 
-func (ae *Exporter) loadLastConnectError() error {
+func (ae *Exporter) lastConnectError() error {
 	errPtr := (*error)(atomic.LoadPointer(&ae.lastConnectErrPtr))
 	if errPtr == nil {
 		return nil
@@ -50,7 +50,7 @@ func (ae *Exporter) setStateConnected() {
 }
 
 func (ae *Exporter) connected() bool {
-	return ae.loadLastConnectError() == nil
+	return ae.lastConnectError() == nil
 }
 
 const defaultConnReattemptPeriod = 10 * time.Second
