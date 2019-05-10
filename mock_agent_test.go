@@ -15,6 +15,7 @@
 package ocagent_test
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -35,9 +36,10 @@ func makeMockAgent(t *testing.T) *mockAgent {
 type mockAgent struct {
 	t *testing.T
 
-	spans []*tracepb.Span
-	mu    sync.Mutex
-	wg    *sync.WaitGroup
+	spans      []*tracepb.Span
+	unarySpans []*tracepb.Span
+	mu         sync.Mutex
+	wg         *sync.WaitGroup
 
 	traceNodes      []*commonpb.Node
 	receivedConfigs []*agenttracepb.CurrentLibraryConfig
@@ -95,6 +97,14 @@ func (ma *mockAgent) Config(tscs agenttracepb.TraceService_ConfigServer) error {
 		}
 		ma.receivedConfigs = append(ma.receivedConfigs, back)
 	}
+}
+
+func (ma *mockAgent) ExportOne(ctx context.Context, req *agenttracepb.ExportTraceServiceRequest) (*agenttracepb.ExportTraceServiceResponse, error) {
+	ma.mu.Lock()
+	ma.unarySpans = append(ma.spans, req.Spans...)
+	ma.traceNodes = append(ma.traceNodes, req.Node)
+	ma.mu.Unlock()
+	return &agenttracepb.ExportTraceServiceResponse{}, nil
 }
 
 func (ma *mockAgent) Export(tses agenttracepb.TraceService_ExportServer) error {
@@ -189,6 +199,14 @@ func runMockAgentAtAddr(t *testing.T, addr string) *mockAgent {
 	ma.stopFunc = deferFunc
 
 	return ma
+}
+
+func (ma *mockAgent) getUnarySpans() []*tracepb.Span {
+	ma.mu.Lock()
+	spans := append([]*tracepb.Span{}, ma.unarySpans...)
+	ma.mu.Unlock()
+
+	return spans
 }
 
 func (ma *mockAgent) getSpans() []*tracepb.Span {

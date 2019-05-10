@@ -18,11 +18,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-
-	"github.com/golang/protobuf/ptypes/timestamp"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )

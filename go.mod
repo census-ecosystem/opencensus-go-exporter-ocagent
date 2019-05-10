@@ -9,3 +9,5 @@ require (
 	google.golang.org/api v0.5.0
 	google.golang.org/grpc v1.21.0
 )
+
+replace github.com/census-instrumentation/opencensus-proto => github.com/owais/opencensus-proto v0.3.0-beta-unary

@@ -162,6 +162,10 @@ func (da *discardAgent) Export(tses agenttracepb.TraceService_ExportServer) erro
 	}
 }
 
+func (da *discardAgent) ExportOne(ctx context.Context, batch *agenttracepb.ExportTraceServiceRequest) (*agenttracepb.ExportTraceServiceResponse, error) {
+	return &agenttracepb.ExportTraceServiceResponse{}, nil
+}
+
 func parsePort(addr net.Addr) (uint16, error) {
 	addrStr := addr.String()
 	if i := strings.LastIndex(addrStr, ":"); i < 0 {

@@ -27,19 +27,21 @@ import (
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
-	"go.opencensus.io"
+	opencensus "go.opencensus.io"
 	"go.opencensus.io/trace"
 )
 
-func TestNewExporter_endToEnd(t *testing.T) {
+func TestNewExporter_end_to_end(t *testing.T) {
 	ma := runMockAgent(t)
 	defer ma.stop()
 
 	serviceName := "endToEnd_test"
-	exp, err := ocagent.NewExporter(ocagent.WithInsecure(),
+	exp, err := ocagent.NewExporter(
+		ocagent.WithInsecure(),
 		ocagent.WithAddress(ma.address),
 		ocagent.WithReconnectionPeriod(50*time.Millisecond),
-		ocagent.WithServiceName(serviceName))
+		ocagent.WithServiceName(serviceName),
+	)
 	if err != nil {
 		t.Fatalf("Failed to create a new agent exporter: %v", err)
 	}
@@ -73,6 +75,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		name := &tracepb.TruncatableString{Value: "AlwaysSample"}
 		batchedSpans = append(batchedSpans, &tracepb.Span{Name: name})
 	}
+	// TODO: ensure nil panic is handled when node is not present
 	_ = exp.ExportTraceServiceRequest(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
 
 	<-time.After(10 * time.Millisecond)
@@ -221,6 +224,86 @@ func TestNewExporter_endToEnd(t *testing.T) {
 			t.Errorf("%q: LibraryInfo mismatch\nGot  %#v\nWant %#v", tt.name, g, w)
 		} else if g, w := node.ServiceInfo, wantServiceInfo; !sameServiceInfo(g, w) {
 			t.Errorf("%q: ServiceInfo mismatch\nGot  %#v\nWant %#v", tt.name, g, w)
+		}
+	}
+}
+
+func TestNewExporter_unary(t *testing.T) {
+	ma := runMockAgent(t)
+	defer ma.stop()
+
+	serviceName := "endToEnd_test"
+	exp, err := ocagent.NewExporter(
+		ocagent.WithInsecure(),
+		ocagent.WithAddress(ma.address),
+		ocagent.WithReconnectionPeriod(50*time.Millisecond),
+		ocagent.WithServiceName(serviceName),
+		ocagent.WithUnaryBatchExporter(ocagent.UnaryExporterParams{}),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create a new agent exporter: %v", err)
+	}
+	defer exp.Stop()
+
+	// Once we've register the exporter, we can then send over a bunch of spans.
+	trace.RegisterExporter(exp)
+	defer trace.UnregisterExporter(exp)
+
+	numSpans := 4
+	batchedSpans := make([]*tracepb.Span, 0, numSpans)
+	for i := 0; i < numSpans; i++ {
+		name := &tracepb.TruncatableString{Value: "AlwaysSample"}
+		batchedSpans = append(batchedSpans, &tracepb.Span{Name: name})
+	}
+	err = exp.ExportTraceServiceRequest(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Now shutdown the exporter
+	if err := exp.Stop(); err != nil {
+		t.Errorf("Failed to stop the exporter: %v", err)
+	}
+
+	// Shutdown the agent too so that we can begin
+	// verification checks of expected data back.
+	ma.stop()
+
+	spans := ma.getUnarySpans()
+	traceNodes := ma.getTraceNodes()
+
+	if g, w := len(spans), numSpans; g != w {
+		t.Errorf("Spans: got %d want %d", g, w)
+	}
+
+	// Now check that the responses received by the agent properly
+	// contain the node identifier that we expect the exporter to have.
+	wantIdentifier := &commonpb.ProcessIdentifier{
+		HostName: os.Getenv("HOSTNAME"),
+		Pid:      uint32(os.Getpid()),
+	}
+	wantLibraryInfo := &commonpb.LibraryInfo{
+		Language:           commonpb.LibraryInfo_GO_LANG,
+		ExporterVersion:    ocagent.Version,
+		CoreLibraryVersion: opencensus.Version(),
+	}
+	wantServiceInfo := &commonpb.ServiceInfo{
+		Name: serviceName,
+	}
+
+	if len(traceNodes) == 0 {
+		t.Errorf("node identifiers should not be empty")
+	}
+
+	for _, node := range traceNodes {
+		if node == nil {
+			t.Errorf("node must not be nil")
+		} else if g, w := node.Identifier, wantIdentifier; !sameProcessIdentifier(g, w) {
+			t.Errorf("ProcessIdentifier mismatch\nGot  %#v\nWant %#v", node.Identifier, wantIdentifier)
+		} else if g, w := node.LibraryInfo, wantLibraryInfo; !sameLibraryInfo(g, w) {
+			t.Errorf("LibraryInfo mismatch\nGot  %#v\nWant %#v", g, w)
+		} else if g, w := node.ServiceInfo, wantServiceInfo; !sameServiceInfo(g, w) {
+			t.Errorf("ServiceInfo mismatch\nGot  %#v\nWant %#v", g, w)
 		}
 	}
 }
