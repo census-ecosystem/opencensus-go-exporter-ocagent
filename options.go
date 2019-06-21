@@ -39,11 +39,11 @@ func (rd resourceDetector) withExporter(e *Exporter) {
 	e.resourceDetector = resource.Detector(rd)
 }
 
-// WithResource allows one to register a resource detector. Resource Detector is used
+// WithResourceDetector allows one to register a resource detector. Resource Detector is used
 // to detect resources associated with the application. Detected resource is exported
 // along with the metrics. If the detector fails then it panics.
 // If a resource detector is not provided then by default it detects from the environment.
-func WithResource(rd resource.Detector) ExporterOption {
+func WithResourceDetector(rd resource.Detector) ExporterOption {
 	return resourceDetector(rd)
 }
 

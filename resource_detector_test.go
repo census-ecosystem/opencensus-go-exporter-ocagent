@@ -28,7 +28,7 @@ func TestResourceDetector(t *testing.T) {
 	ocexp, err := NewExporter(
 		WithInsecure(),
 		WithAddress(":0"),
-		WithResource(customResourceDetector),
+		WithResourceDetector(customResourceDetector),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create the ocagent exporter: %v", err)
