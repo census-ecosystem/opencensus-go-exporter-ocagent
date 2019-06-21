@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2019, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package ocagent
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"go.opencensus.io/resource"
@@ -26,11 +25,9 @@ import (
 )
 
 func TestResourceDetector(t *testing.T) {
-	reconnectionPeriod := 2 * time.Millisecond
 	ocexp, err := NewExporter(
 		WithInsecure(),
 		WithAddress(":0"),
-		WithReconnectionPeriod(reconnectionPeriod),
 		WithResource(customResourceDetector),
 	)
 	if err != nil {
