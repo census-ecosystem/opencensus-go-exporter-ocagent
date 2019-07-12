@@ -22,7 +22,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
+	timestamp "github.com/gogo/protobuf/types"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )

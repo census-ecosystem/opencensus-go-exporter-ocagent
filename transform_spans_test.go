@@ -24,7 +24,7 @@ import (
 	"go.opencensus.io/trace/tracestate"
 
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	timestamp "github.com/gogo/protobuf/types"
 )
 
 func TestOCSpanToProtoSpan_endToEnd(t *testing.T) {

@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
+	timestamp "github.com/gogo/protobuf/types"
 	"google.golang.org/grpc"
 
 	"go.opencensus.io/stats"
