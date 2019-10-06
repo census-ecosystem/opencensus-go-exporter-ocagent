@@ -38,10 +38,14 @@ func ocSpanToProtoSpan(sd *trace.SpanData) *tracepb.Span {
 	if sd.Name != "" {
 		namePtr = &tracepb.TruncatableString{Value: sd.Name}
 	}
+	var parentSpanID []byte
+	if sd.ParentSpanID != (trace.SpanID{}) {
+		parentSpanID = sd.ParentSpanID[:]
+	}
 	return &tracepb.Span{
 		TraceId:      sd.TraceID[:],
 		SpanId:       sd.SpanID[:],
-		ParentSpanId: sd.ParentSpanID[:],
+		ParentSpanId: parentSpanID,
 		Status:       ocStatusToProtoStatus(sd.Status),
 		StartTime:    timeToTimestamp(sd.StartTime),
 		EndTime:      timeToTimestamp(sd.EndTime),
