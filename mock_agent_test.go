@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2020, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
@@ -41,6 +42,8 @@ type mockAgent struct {
 
 	traceNodes      []*commonpb.Node
 	receivedConfigs []*agenttracepb.CurrentLibraryConfig
+
+	resource *resourcepb.Resource
 
 	configsToSend          chan *agenttracepb.UpdatedLibraryConfig
 	closeConfigsToSendOnce sync.Once
@@ -125,6 +128,7 @@ func (ma *mockAgent) Export(tses agenttracepb.TraceService_ExportServer) error {
 			return err
 		}
 		ma.mu.Lock()
+		ma.resource = req.Resource
 		ma.spans = append(ma.spans, req.Spans...)
 		ma.traceNodes = append(ma.traceNodes, req.Node)
 		ma.mu.Unlock()
@@ -213,4 +217,11 @@ func (ma *mockAgent) getTraceNodes() []*commonpb.Node {
 	ma.mu.Unlock()
 
 	return traceNodes
+}
+
+func (ma *mockAgent) getResource() *resourcepb.Resource {
+	ma.mu.Lock()
+	resource := ma.resource
+	ma.mu.Unlock()
+	return resource
 }

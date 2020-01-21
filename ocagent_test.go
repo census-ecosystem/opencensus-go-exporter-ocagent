@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2020, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -26,20 +27,68 @@ import (
 	"contrib.go.opencensus.io/exporter/ocagent"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
-	"go.opencensus.io"
+
+	opencensus "go.opencensus.io"
+	"go.opencensus.io/resource"
 	"go.opencensus.io/trace"
 )
 
 func TestNewExporter_endToEnd(t *testing.T) {
+	// Set up a custom resource for testing WithResourceDetector ExporterOption
+	cr := &resource.Resource{
+		Type: "foo",
+		Labels: map[string]string{
+			"test": "label",
+		},
+	}
+
+	crd := func(context.Context) (*resource.Resource, error) {
+		return cr, nil
+	}
+
+	tests := []struct {
+		name             string
+		additionalOpts   []ocagent.ExporterOption
+		expectedResource *resource.Resource
+	}{
+		{
+			name: "StandardExporter",
+			expectedResource: &resource.Resource{
+				Type:   "",
+				Labels: nil,
+			},
+		}, {
+			name: "WithResourceDetector",
+			additionalOpts: []ocagent.ExporterOption{
+				ocagent.WithResourceDetector(crd),
+			},
+			expectedResource: cr,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			newExporterEndToEndTest(t, test.additionalOpts, test.expectedResource)
+		})
+	}
+}
+
+func newExporterEndToEndTest(t *testing.T, additionalOpts []ocagent.ExporterOption, expRes *resource.Resource) {
 	ma := runMockAgent(t)
 	defer ma.stop()
 
 	serviceName := "endToEnd_test"
-	exp, err := ocagent.NewExporter(ocagent.WithInsecure(),
+	opts := []ocagent.ExporterOption{
+		ocagent.WithInsecure(),
 		ocagent.WithAddress(ma.address),
-		ocagent.WithReconnectionPeriod(50*time.Millisecond),
-		ocagent.WithServiceName(serviceName))
+		ocagent.WithReconnectionPeriod(50 * time.Millisecond),
+		ocagent.WithServiceName(serviceName),
+	}
+
+	opts = append(opts, additionalOpts...)
+	exp, err := ocagent.NewExporter(opts...)
 	if err != nil {
 		t.Fatalf("Failed to create a new agent exporter: %v", err)
 	}
@@ -167,6 +216,7 @@ func TestNewExporter_endToEnd(t *testing.T) {
 	spans := ma.getSpans()
 	traceNodes := ma.getTraceNodes()
 	receivedConfigs := ma.getReceivedConfigs()
+	resource := ma.getResource()
 
 	if g, w := len(receivedConfigs), 5; g != w {
 		t.Errorf("ReceivedConfigs: got %d want %d", g, w)
@@ -222,6 +272,15 @@ func TestNewExporter_endToEnd(t *testing.T) {
 		} else if g, w := node.ServiceInfo, wantServiceInfo; !sameServiceInfo(g, w) {
 			t.Errorf("%q: ServiceInfo mismatch\nGot  %#v\nWant %#v", tt.name, g, w)
 		}
+	}
+
+	wantResource := &resourcepb.Resource{
+		Type:   expRes.Type,
+		Labels: expRes.Labels,
+	}
+
+	if !reflect.DeepEqual(resource, wantResource) {
+		t.Errorf("Resource mismatch\nGot  %#v\nWant %#v", resource, wantResource)
 	}
 }
 
