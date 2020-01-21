@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2020, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 )
 
 type metricsAgent struct {
@@ -39,6 +40,31 @@ type metricsAgent struct {
 }
 
 func TestExportMetrics_conversionFromViewData(t *testing.T) {
+	tests := []struct {
+		name             string
+		additionalOpts   []ExporterOption
+		expectedResource *resourcepb.Resource
+	}{
+		{
+			name:             "StandardExporter",
+			expectedResource: resourceProtoFromEnv(),
+		}, {
+			name: "WithResourceDetector",
+			additionalOpts: []ExporterOption{
+				WithResourceDetector(customResourceDetector),
+			},
+			expectedResource: resourceToResourcePb(customResource),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testConversionFromViewData(t, test.additionalOpts, test.expectedResource)
+		})
+	}
+}
+
+func testConversionFromViewData(t *testing.T, additionalOpts []ExporterOption, expRes *resourcepb.Resource) {
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatalf("Failed to get an available TCP address: %v", err)
@@ -55,11 +81,13 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 	}()
 
 	reconnectionPeriod := 2 * time.Millisecond
-	ocexp, err := NewExporter(
+	opts := []ExporterOption{
 		WithInsecure(),
-		WithAddress(":"+agentPortStr),
+		WithAddress(":" + agentPortStr),
 		WithReconnectionPeriod(reconnectionPeriod),
-	)
+	}
+	opts = append(opts, additionalOpts...)
+	ocexp, err := NewExporter(opts...)
 	if err != nil {
 		t.Fatalf("Failed to create the ocagent exporter: %v", err)
 	}
@@ -103,7 +131,7 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 		{
 			Node:     NodeWithStartTime(""), // The first message identifying this application.
 			Metrics:  nil,
-			Resource: resourceProtoFromEnv(),
+			Resource: expRes,
 		},
 		{
 			Metrics: []*metricspb.Metric{
@@ -135,7 +163,7 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 					},
 				},
 			},
-			Resource: resourceProtoFromEnv(),
+			Resource: expRes,
 		},
 	}
 

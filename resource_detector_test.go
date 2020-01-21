@@ -1,4 +1,4 @@
-// Copyright 2019, OpenCensus Authors
+// Copyright 2020, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,13 @@ import (
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 )
 
+var (
+	customResource = &resource.Resource{
+		Type:   "foo",
+		Labels: map[string]string{},
+	}
+)
+
 func TestResourceDetector(t *testing.T) {
 	ocexp, err := NewExporter(
 		WithInsecure(),
@@ -46,9 +53,5 @@ func TestResourceDetector(t *testing.T) {
 }
 
 func customResourceDetector(context.Context) (*resource.Resource, error) {
-	res := &resource.Resource{
-		Type:   "foo",
-		Labels: map[string]string{},
-	}
-	return res, nil
+	return customResource, nil
 }
