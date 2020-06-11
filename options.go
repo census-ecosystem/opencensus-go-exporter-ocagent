@@ -159,3 +159,16 @@ func WithGRPCDialOption(opts ...grpc.DialOption) ExporterOption {
 func (opts grpcDialOptions) withExporter(e *Exporter) {
 	e.grpcDialOptions = opts
 }
+
+type prefixSetter string
+
+var _ ExporterOption = (*prefixSetter)(nil)
+
+func (p prefixSetter) withExporter(e *Exporter) {
+	e.metricNamePerfix = string(p)
+}
+
+// UseMetricNamePrefix provides an option for the caller to add a prefix to metric names.
+func UseMetricNamePrefix(prefix string) ExporterOption {
+	return prefixSetter(prefix)
+}
