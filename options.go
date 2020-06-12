@@ -168,7 +168,7 @@ func (p metricNamePrefixSetter) withExporter(e *Exporter) {
 	e.metricNamePerfix = string(p)
 }
 
-// UseMetricNamePrefix provides an option for the caller to add a prefix to metric names.
-func UseMetricNamePrefix(prefix string) ExporterOption {
+// WithMetricNamePrefix provides an option for the caller to add a prefix to metric names.
+func WithMetricNamePrefix(prefix string) ExporterOption {
 	return metricNamePrefixSetter(prefix)
 }
