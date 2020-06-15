@@ -39,9 +39,10 @@ var (
 )
 
 type test struct {
-	in      *view.Data
-	want    *metricspb.Metric
-	wantErr string
+	in               *view.Data
+	metricNamePrefix string
+	want             *metricspb.Metric
+	wantErr          string
 }
 
 func TestViewDataToMetrics_Distribution(t *testing.T) {
@@ -1150,9 +1151,63 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 	testViewDataToMetrics(t, tests)
 }
 
+func TestViewDataToMetrics_WithMetricNamePrefix(t *testing.T) {
+	startTime := time.Date(2018, 11, 25, 15, 38, 18, 997, time.UTC)
+	endTime := startTime.Add(100 * time.Millisecond)
+
+	tests := []*test{
+		// Testing with a stats.Float64 measure.
+		{
+			in: &view.Data{
+				Start: startTime,
+				End:   endTime,
+				View: &view.View{
+					Name:        "latency",
+					Description: "speed of the various runners",
+					Aggregation: view.Sum(),
+					Measure:     mSprinterLatencyMs,
+				},
+				Rows: []*view.Row{
+					{
+						Data: &view.SumData{Value: 27},
+					},
+				},
+			},
+			metricNamePrefix: "foo.bar",
+			want: &metricspb.Metric{
+				MetricDescriptor: &metricspb.MetricDescriptor{
+					Name:        "foo.bar/latency",
+					Description: "speed of the various runners",
+					Unit:        "ms",
+					Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
+				},
+				Timeseries: []*metricspb.TimeSeries{
+					{
+						StartTimestamp: &timestamp.Timestamp{
+							Seconds: 1543160298,
+							Nanos:   997,
+						},
+						Points: []*metricspb.Point{
+							{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 1543160298,
+									Nanos:   100000997,
+								},
+								Value: &metricspb.Point_DoubleValue{DoubleValue: 27},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	testViewDataToMetrics(t, tests)
+}
+
 func testViewDataToMetrics(t *testing.T, tests []*test) {
 	for i, tt := range tests {
-		got, err := viewDataToMetric(tt.in)
+		got, err := viewDataToMetric(tt.in, tt.metricNamePrefix)
 		if tt.wantErr != "" {
 			continue
 		}
