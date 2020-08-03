@@ -94,7 +94,7 @@ type Exporter struct {
 
 	grpcDialOptions []grpc.DialOption
 
-	spanConfig 	    SpanConfig
+	spanConfig SpanConfig
 }
 
 func NewExporter(opts ...ExporterOption) (*Exporter, error) {

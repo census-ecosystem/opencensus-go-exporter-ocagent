@@ -3,20 +3,19 @@ package ocagent
 import "testing"
 
 func TestSpanConfig_GetAnnotationEventsPerSpan(t *testing.T) {
-	tests := [] struct{
-		name string
-		inputSpanConfig SpanConfig
+	tests := []struct {
+		name                   string
+		inputSpanConfig        SpanConfig
 		expectedMaxAnnotations int
 	}{
 		{
-			name: "WhenConfigNotProvided",
-			inputSpanConfig: SpanConfig{},
+			name:                   "WhenConfigNotProvided",
+			inputSpanConfig:        SpanConfig{},
 			expectedMaxAnnotations: 32,
-
 		},
 		{
-			name: "WhenConfigProvided",
-			inputSpanConfig: SpanConfig{AnnotationEventsPerSpan: 256},
+			name:                   "WhenConfigProvided",
+			inputSpanConfig:        SpanConfig{AnnotationEventsPerSpan: 256},
 			expectedMaxAnnotations: 256,
 		},
 	}
@@ -32,20 +31,19 @@ func TestSpanConfig_GetAnnotationEventsPerSpan(t *testing.T) {
 }
 
 func TestSpanConfig_GetMessageEventsPerSpan(t *testing.T) {
-	tests := [] struct{
-		name string
-		inputSpanConfig SpanConfig
+	tests := []struct {
+		name                     string
+		inputSpanConfig          SpanConfig
 		expectedMaxMessageEvents int
 	}{
 		{
-			name: "WhenConfigNotProvided",
-			inputSpanConfig: SpanConfig{},
+			name:                     "WhenConfigNotProvided",
+			inputSpanConfig:          SpanConfig{},
 			expectedMaxMessageEvents: 128,
-
 		},
 		{
-			name: "WhenConfigProvided",
-			inputSpanConfig: SpanConfig{MessageEventsPerSpan: 256},
+			name:                     "WhenConfigProvided",
+			inputSpanConfig:          SpanConfig{MessageEventsPerSpan: 256},
 			expectedMaxMessageEvents: 256,
 		},
 	}

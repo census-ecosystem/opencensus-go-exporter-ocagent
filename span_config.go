@@ -23,5 +23,3 @@ func (spanConfig SpanConfig) GetMessageEventsPerSpan() int {
 	}
 	return spanConfig.MessageEventsPerSpan
 }
-
-

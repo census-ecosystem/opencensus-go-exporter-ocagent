@@ -173,7 +173,6 @@ func WithMetricNamePrefix(prefix string) ExporterOption {
 	return metricNamePrefixSetter(prefix)
 }
 
-
 func (spanConfig SpanConfig) withExporter(e *Exporter) {
 	e.spanConfig = spanConfig
 }
