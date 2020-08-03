@@ -32,7 +32,11 @@ func main() {
 		ocagent.WithInsecure(),
 		ocagent.WithReconnectionPeriod(5*time.Second),
 		ocagent.WithAddress("localhost:55678"), // Only included here for demo purposes.
-		ocagent.WithServiceName("ocagent-go-example"))
+		ocagent.WithServiceName("ocagent-go-example"),
+		ocagent.WithSpanConfig(ocagent.SpanConfig{
+			AnnotationEventsPerSpan: 256,
+			MessageEventsPerSpan:    256,
+		}))
 	if err != nil {
 		log.Fatalf("Failed to create ocagent-exporter: %v", err)
 	}
