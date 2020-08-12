@@ -172,3 +172,14 @@ func (p metricNamePrefixSetter) withExporter(e *Exporter) {
 func WithMetricNamePrefix(prefix string) ExporterOption {
 	return metricNamePrefixSetter(prefix)
 }
+
+func (spanConfig SpanConfig) withExporter(e *Exporter) {
+	e.spanConfig = spanConfig
+}
+
+var _ ExporterOption = (*SpanConfig)(nil)
+
+// WithSpanConfig allows one to set the AnnotationEventsPerSpan and MessageEventsPerSpan
+func WithSpanConfig(spanConfig SpanConfig) ExporterOption {
+	return spanConfig
+}

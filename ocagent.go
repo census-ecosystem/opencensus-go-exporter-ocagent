@@ -93,6 +93,8 @@ type Exporter struct {
 	clientTransportCredentials credentials.TransportCredentials
 
 	grpcDialOptions []grpc.DialOption
+
+	spanConfig SpanConfig
 }
 
 func NewExporter(opts ...ExporterOption) (*Exporter, error) {
@@ -475,14 +477,14 @@ func (ae *Exporter) ExportMetricsServiceRequest(batch *agentmetricspb.ExportMetr
 	}
 }
 
-func ocSpanDataToPbSpans(sdl []*trace.SpanData) []*tracepb.Span {
+func ocSpanDataToPbSpans(sdl []*trace.SpanData, spanConfig SpanConfig) []*tracepb.Span {
 	if len(sdl) == 0 {
 		return nil
 	}
 	protoSpans := make([]*tracepb.Span, 0, len(sdl))
 	for _, sd := range sdl {
 		if sd != nil {
-			protoSpans = append(protoSpans, ocSpanToProtoSpan(sd))
+			protoSpans = append(protoSpans, ocSpanToProtoSpan(sd, spanConfig))
 		}
 	}
 	return protoSpans
@@ -498,7 +500,7 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 			return
 		}
 
-		protoSpans := ocSpanDataToPbSpans(sdl)
+		protoSpans := ocSpanDataToPbSpans(sdl, ae.spanConfig)
 		if len(protoSpans) == 0 {
 			return
 		}
