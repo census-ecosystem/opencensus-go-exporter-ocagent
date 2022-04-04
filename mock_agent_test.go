@@ -24,17 +24,63 @@ import (
 	"google.golang.org/grpc"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
 func makeMockAgent(t *testing.T) *mockAgent {
-	return &mockAgent{configsToSend: make(chan *agenttracepb.UpdatedLibraryConfig), t: t, wg: new(sync.WaitGroup)}
+	return &mockAgent{
+		configsToSend: make(chan *agenttracepb.UpdatedLibraryConfig), t: t, wg: new(sync.WaitGroup),
+		metricsServer: &mockMetricsServer{wg: new(sync.WaitGroup)},
+	}
+}
+
+type mockMetricsServer struct {
+	metrics []*metricspb.Metric
+
+	mu sync.Mutex
+	wg *sync.WaitGroup
+}
+
+func (m *mockMetricsServer) Export(s agentmetricspb.MetricsService_ExportServer) error {
+	in, err := s.Recv()
+	if err != nil {
+		return err
+	}
+
+	m.mu.Lock()
+	m.wg.Add(1)
+	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		m.wg.Done()
+		m.mu.Unlock()
+	}()
+
+	// The first message should contain the node identifier.
+	if in == nil || in.Node == nil {
+		return fmt.Errorf("the first message must contain the node identifier")
+	}
+
+	// Now that we have the node identifier, let's start receiving metrics.
+	for {
+		req, err := s.Recv()
+		if err != nil {
+			return err
+		}
+		m.mu.Lock()
+		m.metrics = append(m.metrics, req.GetMetrics()...)
+		m.mu.Unlock()
+	}
 }
 
 type mockAgent struct {
 	t *testing.T
+
+	metricsServer *mockMetricsServer
 
 	spans []*tracepb.Span
 	mu    sync.Mutex
@@ -178,6 +224,7 @@ func runMockAgentAtAddr(t *testing.T, addr string) *mockAgent {
 	srv := grpc.NewServer()
 	ma := makeMockAgent(t)
 	agenttracepb.RegisterTraceServiceServer(srv, ma)
+	agentmetricspb.RegisterMetricsServiceServer(srv, ma.metricsServer)
 	go func() {
 		_ = srv.Serve(ln)
 	}()

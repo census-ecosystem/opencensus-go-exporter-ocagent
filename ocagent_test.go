@@ -24,15 +24,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"contrib.go.opencensus.io/exporter/ocagent"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 
 	opencensus "go.opencensus.io"
 	"go.opencensus.io/resource"
 	"go.opencensus.io/trace"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/view"
+	"go.opencensus.io/tag"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNewExporter_endToEnd(t *testing.T) {
@@ -282,6 +288,170 @@ func newExporterEndToEndTest(t *testing.T, additionalOpts []ocagent.ExporterOpti
 	if !reflect.DeepEqual(resource, wantResource) {
 		t.Errorf("Resource mismatch\nGot  %#v\nWant %#v", resource, wantResource)
 	}
+}
+
+func TestNewExporter_metrics_endToEnd(t *testing.T) {
+	// Setup mock agent.
+	ma := runMockAgent(t)
+	defer ma.stop()
+
+	// Setup exporter.
+	exp, err := ocagent.NewExporter(ocagent.WithInsecure(),
+		ocagent.WithAddress(ma.address),
+		ocagent.WithReconnectionPeriod(50*time.Millisecond))
+	if err != nil {
+		t.Fatalf("Failed to create a new agent exporter: %v", err)
+	}
+	defer exp.Stop()
+	exp.StartMetricsExport()
+	defer exp.StopMetricsExport()
+
+	// Setup some stats and views.
+	var (
+		testInt64Stat   = stats.Int64("test/int64", "a test int stat", "1")
+		testFloat64Stat = stats.Float64("test/float", "a test float stat", "1")
+
+		testTag = tag.MustNewKey("test_tag")
+
+		distributionView = &view.View{
+			Name:        "test/distribution",
+			Measure:     testFloat64Stat,
+			Description: "test distribution",
+			Aggregation: view.Distribution(10, 100, 1000),
+			TagKeys:     []tag.Key{testTag}}
+
+		intGuageView = &view.View{
+			Name:        "test/intGuage",
+			Measure:     testInt64Stat,
+			Description: "Test guage",
+			Aggregation: view.LastValue(),
+			TagKeys:     []tag.Key{testTag},
+		}
+	)
+	if err := view.Register(distributionView, intGuageView); err != nil {
+		t.Fatalf("Failed to register the views: %v", err)
+	}
+
+	// Publish some dummy stats.
+	ctx, err := tag.New(context.Background(), tag.Insert(testTag, "test-tag-value"))
+	if err != nil {
+		t.Fatalf("failed to create tag (%v) err: %v", testTag, err)
+	}
+	for i := 0; i < 500; i++ {
+		stats.Record(ctx, testFloat64Stat.M(0.5*float64(i)), testInt64Stat.M(int64(i)))
+	}
+
+	mock := ma.metricsServer
+
+	// Wait for the data to to reach the mock agent.
+	timeout := 10 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(50 * time.Millisecond)
+	func() {
+		for {
+			select {
+			case <-ticker.C:
+				mock.mu.Lock()
+				if len(mock.metrics) >= 2 {
+					mock.mu.Unlock()
+					return
+				}
+				mock.mu.Unlock()
+
+			case <-ctx.Done():
+				t.Fatalf("Timed out waiting for 2 metrics in the mock agent. Waited %v, got metrics: %v",
+					timeout, mock.metrics)
+			}
+		}
+	}()
+	mock.mu.Lock()
+	defer mock.mu.Unlock()
+
+	// Verify that we got expected metrics.
+	metricsByName := make(map[string]*metricspb.Metric)
+	for _, m := range mock.metrics {
+		metricsByName[m.GetMetricDescriptor().GetName()] = m
+	}
+
+	want := map[string]*metricspb.Metric{
+		"test/distribution": {
+			MetricDescriptor: &metricspb.MetricDescriptor{
+				Name:        "test/distribution",
+				Description: "test distribution",
+				Unit:        "1",
+				Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+				LabelKeys: []*metricspb.LabelKey{
+					{Key: "test_tag"},
+				},
+			},
+			Timeseries: []*metricspb.TimeSeries{
+				{
+					LabelValues: []*metricspb.LabelValue{
+						{Value: "test-tag-value", HasValue: true},
+					},
+					Points: []*metricspb.Point{
+						{
+							Value: &metricspb.Point_DistributionValue{
+								DistributionValue: &metricspb.DistributionValue{
+									Count:                 500,
+									Sum:                   62375,
+									SumOfSquaredDeviation: 2.60415625e+06,
+									Buckets: []*metricspb.DistributionValue_Bucket{
+										{Count: 20}, {Count: 180}, {Count: 300}, {},
+									},
+									BucketOptions: &metricspb.DistributionValue_BucketOptions{
+										Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+											Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+												Bounds: []float64{10, 100, 1000},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Resource: nil,
+		},
+		"test/intGuage": {
+			MetricDescriptor: &metricspb.MetricDescriptor{
+				Name:        "test/intGuage",
+				Description: "Test guage",
+				Unit:        "1",
+				Type:        metricspb.MetricDescriptor_GAUGE_INT64,
+				LabelKeys: []*metricspb.LabelKey{
+					{Key: "test_tag"},
+				},
+			},
+			Timeseries: []*metricspb.TimeSeries{
+				{
+					LabelValues: []*metricspb.LabelValue{
+						{Value: "test-tag-value", HasValue: true},
+					},
+					Points: []*metricspb.Point{
+						{
+							Value: &metricspb.Point_Int64Value{
+								Int64Value: 499,
+							},
+						},
+					},
+				},
+			},
+			Resource: nil,
+		},
+	}
+
+	opts := []cmp.Option{
+		protocmp.Transform(),
+		protocmp.IgnoreFields(&metricspb.TimeSeries{}, "start_timestamp"),
+		protocmp.IgnoreFields(&metricspb.Point{}, "timestamp"),
+	}
+	if diff := cmp.Diff(want, metricsByName, opts...); diff != "" {
+		t.Errorf("Unexpected diff for test_distribution MetricDescriptor (-want +got): %v", diff)
+	}
+
 }
 
 func TestNewExporter_invokeStartThenStopManyTimes(t *testing.T) {

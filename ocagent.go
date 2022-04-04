@@ -28,6 +28,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
+	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/metric/metricexport"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
@@ -77,6 +79,9 @@ type Exporter struct {
 	lastConnectErrPtr  unsafe.Pointer
 	metricNamePerfix   string
 
+	initReaderOnce sync.Once
+	intervalReader *metricexport.IntervalReader
+
 	startOnce      sync.Once
 	stopCh         chan bool
 	disconnectedCh chan bool
@@ -89,6 +94,8 @@ type Exporter struct {
 	// from OpenCensus-Go view.Data to metricspb.Metric.
 	// Please do not confuse it with metricsBundler!
 	viewDataBundler *bundler.Bundler
+
+	metricsBundler *bundler.Bundler
 
 	// Bundler configuration options managed by viewDataBundler
 	viewDataDelay       time.Duration
@@ -134,6 +141,16 @@ func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	viewDataBundler.DelayThreshold = e.viewDataDelay
 	viewDataBundler.BundleCountThreshold = e.viewDataBundleCount
 	e.viewDataBundler = viewDataBundler
+
+	metricsBundler := bundler.NewBundler((*metricdata.Metric)(nil), func(bundle interface{}) {
+		metrics := bundle.([]*metricdata.Metric)
+		e.uploadMetrics(metrics)
+	})
+
+	metricsBundler.DelayThreshold = 1 * time.Second
+	metricsBundler.BundleCountThreshold = 500
+	e.metricsBundler = metricsBundler
+
 	e.nodeInfo = NodeWithStartTime(e.serviceName)
 	if e.resourceDetector != nil {
 		res, err := e.resourceDetector(context.Background())
@@ -190,6 +207,37 @@ func (ae *Exporter) Start() error {
 	})
 
 	return err
+}
+
+
+// StartMetricsExport starts reading and populating metrics.
+func (ae *Exporter) StartMetricsExport() error {
+	ae.initReaderOnce.Do(func() {
+		ae.intervalReader, _ = metricexport.NewIntervalReader(metricexport.NewReader(), ae)
+	})
+	ae.intervalReader.ReportingInterval = 1 * time.Second
+	return ae.intervalReader.Start()
+}
+
+// StopMetricsExport stops reading metrics.
+func (ae *Exporter) StopMetricsExport() {
+	if ae.intervalReader != nil {
+		ae.intervalReader.Stop()
+	}
+}
+
+// ExportMetrics receives metrics from the interval reader and adds them to
+// metrics bundler for further export.
+func (ae *Exporter) ExportMetrics(ctx context.Context, md []*metricdata.Metric) error {
+	if len(md) == 0 {
+		return nil
+	}
+	for _, m := range md {
+		if err := ae.metricsBundler.Add(m, 1); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ae *Exporter) prepareAgentAddress() string {
@@ -554,9 +602,36 @@ func (ae *Exporter) uploadViewData(vdl []*view.Data) {
 	ae.ExportMetricsServiceRequest(req)
 }
 
+func metricsToPbMetrics(mdl []*metricdata.Metric) []*metricspb.Metric {
+	if len(mdl) == 0 {
+		return nil
+	}
+	metrics := make([]*metricspb.Metric, 0, len(mdl))
+	for _, md := range mdl {
+		if md != nil {
+			metric := metricDataToMetric(md)
+			metrics = append(metrics, metric)
+		}
+	}
+	return metrics
+}
+
+func (ae *Exporter) uploadMetrics(metrics []*metricdata.Metric) {
+	protoMetrics := metricsToPbMetrics(metrics)
+	if len(protoMetrics) == 0 {
+		return
+	}
+	req := &agentmetricspb.ExportMetricsServiceRequest{
+		Metrics:  protoMetrics,
+		Resource: resourceProtoFromEnv(),
+	}
+	ae.ExportMetricsServiceRequest(req)
+}
+
 func (ae *Exporter) Flush() {
 	ae.traceBundler.Flush()
 	ae.viewDataBundler.Flush()
+	ae.metricsBundler.Flush()
 }
 
 func resourceProtoFromEnv() *resourcepb.Resource {
@@ -568,6 +643,9 @@ func resourceProtoFromEnv() *resourcepb.Resource {
 }
 
 func resourceToResourcePb(rs *resource.Resource) *resourcepb.Resource {
+	if rs == nil {
+		return nil
+	}
 	rprs := &resourcepb.Resource{
 		Type: rs.Type,
 	}

@@ -16,15 +16,19 @@ package ocagent
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
+	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 
+
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -275,4 +279,199 @@ func labelValuesFromTags(tags []tag.Tag) []*metricspb.LabelValue {
 		})
 	}
 	return labelValues
+}
+
+func metricTypeToProtoEnum(t metricdata.Type) metricspb.MetricDescriptor_Type {
+	switch t {
+	case metricdata.TypeGaugeInt64:
+		return metricspb.MetricDescriptor_GAUGE_INT64
+	case metricdata.TypeGaugeFloat64:
+		return metricspb.MetricDescriptor_GAUGE_DOUBLE
+	case metricdata.TypeGaugeDistribution:
+		return metricspb.MetricDescriptor_GAUGE_DISTRIBUTION
+	case metricdata.TypeCumulativeInt64:
+		return metricspb.MetricDescriptor_CUMULATIVE_INT64
+	case metricdata.TypeCumulativeFloat64:
+		return metricspb.MetricDescriptor_CUMULATIVE_DOUBLE
+	case metricdata.TypeCumulativeDistribution:
+		return metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION
+	case metricdata.TypeSummary:
+		return metricspb.MetricDescriptor_SUMMARY
+	}
+	return metricspb.MetricDescriptor_UNSPECIFIED
+}
+
+func metricLabelKeysToProtos(ks []metricdata.LabelKey) []*metricspb.LabelKey {
+	keys := make([]*metricspb.LabelKey, len(ks))
+	for i, k := range ks {
+		keys[i] = &metricspb.LabelKey{
+			Key:         k.Key,
+			Description: k.Description,
+		}
+	}
+
+	return keys
+}
+
+func metricDescriptorToProto(d metricdata.Descriptor) *metricspb.MetricDescriptor {
+	return &metricspb.MetricDescriptor{
+		Name:        d.Name,
+		Description: d.Description,
+		Unit:        string(d.Unit),
+		Type:        metricTypeToProtoEnum(d.Type),
+		LabelKeys:   metricLabelKeysToProtos(d.LabelKeys),
+	}
+}
+
+func labelValuesToProto(vs []metricdata.LabelValue) []*metricspb.LabelValue {
+	values := make([]*metricspb.LabelValue, len(vs))
+	for i, v := range vs {
+		values[i] = &metricspb.LabelValue{
+			Value:    v.Value,
+			HasValue: v.Present,
+		}
+	}
+	return values
+}
+
+// pointValueVisitor populates value of the point proto.
+type pointValueVisitor struct {
+	point *metricspb.Point
+}
+
+func (vv *pointValueVisitor) VisitFloat64Value(v float64) {
+	vv.point.Value = &metricspb.Point_DoubleValue{DoubleValue: v}
+}
+func (vv *pointValueVisitor) VisitInt64Value(v int64) {
+	vv.point.Value = &metricspb.Point_Int64Value{Int64Value: v}
+}
+
+func (vv *pointValueVisitor) VisitDistributionValue(v *metricdata.Distribution) {
+	var bucketOptions *metricspb.DistributionValue_BucketOptions
+	if v.BucketOptions != nil {
+		bucketOptions = &metricspb.DistributionValue_BucketOptions{
+			Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+				Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+					Bounds: v.BucketOptions.Bounds,
+				},
+			},
+		}
+	}
+
+	buckets := make([]*metricspb.DistributionValue_Bucket, len(v.Buckets))
+	for i, b := range v.Buckets {
+		var ex *metricspb.DistributionValue_Exemplar
+		if b.Exemplar != nil {
+			attachments := make(map[string]string)
+			for k, v := range b.Exemplar.Attachments {
+				switch v := v.(type) {
+				case fmt.Stringer:
+					attachments[k] = v.String()
+				case string:
+					attachments[k] = v
+				default:
+					attachments[k] = fmt.Sprintf("%v", v)
+				}
+			}
+			ex = &metricspb.DistributionValue_Exemplar{
+				Value:       b.Exemplar.Value,
+				Timestamp:   timeToProtoTimestamp(b.Exemplar.Timestamp),
+				Attachments: attachments,
+			}
+		}
+
+		buckets[i] = &metricspb.DistributionValue_Bucket{
+			Count:    b.Count,
+			Exemplar: ex,
+		}
+	}
+	d := &metricspb.DistributionValue{
+		Count:                 v.Count,
+		Sum:                   v.Sum,
+		SumOfSquaredDeviation: v.SumOfSquaredDeviation,
+		BucketOptions:         bucketOptions,
+		Buckets:               buckets,
+	}
+
+	vv.point.Value = &metricspb.Point_DistributionValue{DistributionValue: d}
+}
+
+func (vv *pointValueVisitor) VisitSummaryValue(v *metricdata.Summary) {
+
+	var count *wrapperspb.Int64Value
+	var sum *wrapperspb.DoubleValue
+	if v.HasCountAndSum {
+		count = wrapperspb.Int64(v.Count)
+		sum = wrapperspb.Double(v.Sum)
+	}
+
+	var ptiles []*metricspb.SummaryValue_Snapshot_ValueAtPercentile
+	for k, v := range v.Snapshot.Percentiles {
+		ptiles = append(ptiles, &metricspb.SummaryValue_Snapshot_ValueAtPercentile{
+			Percentile: k,
+			Value:      v,
+		})
+	}
+
+	vv.point.Value = &metricspb.Point_SummaryValue{
+		SummaryValue: &metricspb.SummaryValue{
+			Count: count,
+			Sum:   sum,
+			Snapshot: &metricspb.SummaryValue_Snapshot{
+				Count:            wrapperspb.Int64(v.Snapshot.Count),
+				Sum:              wrapperspb.Double(v.Snapshot.Sum),
+				PercentileValues: ptiles,
+			},
+		},
+	}
+}
+
+func metricPointsToProto(ps []metricdata.Point) []*metricspb.Point {
+	points := make([]*metricspb.Point, len(ps))
+	for i, p := range ps {
+
+		pt := &metricspb.Point{
+			Timestamp: timeToProtoTimestamp(p.Time),
+		}
+
+		// pointValueVisitor populates point`s value in the point proto.
+		vv := &pointValueVisitor{pt}
+		p.ReadValue(vv)
+
+		points[i] = pt
+	}
+
+	return points
+}
+
+func metricDataTimeseriesToProto(tss []*metricdata.TimeSeries) []*metricspb.TimeSeries {
+	if tss == nil || len(tss) == 0 {
+		return nil
+	}
+
+	timeseries := make([]*metricspb.TimeSeries, 0, len(tss))
+	// It is imperative that the ordering of "LabelValues" matches those
+	// of the Label keys in the metric descriptor.
+	for _, ts := range tss {
+		timeseries = append(timeseries, &metricspb.TimeSeries{
+			StartTimestamp: timeToProtoTimestamp(ts.StartTime),
+			LabelValues:    labelValuesToProto(ts.LabelValues),
+			Points:         metricPointsToProto(ts.Points),
+		})
+	}
+
+	return timeseries
+}
+
+func metricDataToMetric(md *metricdata.Metric) *metricspb.Metric {
+	if md == nil {
+		return nil
+	}
+
+	metric := &metricspb.Metric{
+		MetricDescriptor: metricDescriptorToProto(md.Descriptor),
+		Resource:         resourceToResourcePb(md.Resource),
+		Timeseries:       metricDataTimeseriesToProto(md.TimeSeries),
+	}
+	return metric
 }
